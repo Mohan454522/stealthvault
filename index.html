@@ -19,9 +19,112 @@
         <button class="tab-btn" data-tab="open">Open Vault</button>
         <button class="tab-btn" data-tab="changepw">Change Password</button>
       </div>
-      <div id="worker-badge" class="worker-badge">loading…</div>
+      <div class="nav-right">
+        <div id="worker-badge" class="worker-badge">loading…</div>
+        <button class="btn-settings" id="btn-open-settings" title="Settings">⚙️</button>
+      </div>
     </div>
   </nav>
+
+  <!-- ══ SETTINGS PANEL ══ -->
+  <div id="settings-overlay" class="settings-overlay hidden"></div>
+  <div id="settings-panel" class="settings-panel hidden">
+    <div class="settings-header">
+      <span class="settings-title">⚙️ Settings</span>
+      <button class="btn-icon" id="btn-close-settings">✕</button>
+    </div>
+
+    <div class="settings-section">
+      <div class="settings-section-title">Encryption</div>
+
+      <div class="settings-row">
+        <label>Chunk Size <span class="settings-hint">(for new encryptions only)</span></label>
+        <div class="settings-chips" id="chunk-size-chips">
+          <button class="chip" data-val="16">16 MB</button>
+          <button class="chip" data-val="32">32 MB</button>
+          <button class="chip active" data-val="64">64 MB</button>
+          <button class="chip" data-val="128">128 MB</button>
+          <button class="chip" data-val="256">256 MB</button>
+        </div>
+        <p class="settings-note">Old files always decrypt correctly — their chunk size is stored inside them.</p>
+      </div>
+
+      <div class="settings-row">
+        <label>Parallel Workers <span class="settings-hint">(higher = faster on multicore CPUs)</span></label>
+        <div class="settings-chips" id="worker-count-chips">
+          <button class="chip" data-val="1">1</button>
+          <button class="chip" data-val="2">2</button>
+          <button class="chip active" data-val="4">4</button>
+          <button class="chip" data-val="6">6</button>
+          <button class="chip" data-val="8">8</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="settings-section">
+      <div class="settings-section-title">Video Player</div>
+
+      <div class="settings-row">
+        <label>Skip Amount</label>
+        <div class="settings-chips" id="skip-seconds-chips">
+          <button class="chip" data-val="5">5s</button>
+          <button class="chip active" data-val="10">10s</button>
+          <button class="chip" data-val="15">15s</button>
+          <button class="chip" data-val="30">30s</button>
+        </div>
+      </div>
+
+      <div class="settings-row settings-toggle-row">
+        <label>Auto-play next when video ends</label>
+        <label class="toggle">
+          <input type="checkbox" id="toggle-autoplay" checked />
+          <span class="toggle-track"></span>
+        </label>
+      </div>
+
+      <div class="settings-row" id="autoplay-delay-row">
+        <label>Countdown before auto-next</label>
+        <div class="settings-chips" id="autoplay-delay-chips">
+          <button class="chip" data-val="0">Instant</button>
+          <button class="chip" data-val="3">3s</button>
+          <button class="chip active" data-val="5">5s</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="settings-section">
+      <div class="settings-section-title">Gallery</div>
+
+      <div class="settings-row">
+        <label>Prefetch ahead <span class="settings-hint">(items decrypted in background)</span></label>
+        <div class="settings-chips" id="prefetch-chips">
+          <button class="chip" data-val="1">1</button>
+          <button class="chip active" data-val="2">2</button>
+          <button class="chip" data-val="3">3</button>
+          <button class="chip" data-val="4">4</button>
+        </div>
+      </div>
+
+      <div class="settings-row">
+        <label>In-browser preview limit</label>
+        <div class="settings-chips" id="preview-limit-chips">
+          <button class="chip" data-val="512">512 MB</button>
+          <button class="chip" data-val="1024">1 GB</button>
+          <button class="chip active" data-val="2048">2 GB</button>
+          <button class="chip" data-val="4096">4 GB</button>
+        </div>
+        <p class="settings-note">Files above this show "Use Export" instead of previewing in browser.</p>
+      </div>
+    </div>
+
+    <div class="settings-section">
+      <div class="settings-section-title">About</div>
+      <div class="settings-row">
+        <p class="settings-note" style="color:var(--text2);">StealthVault v6 · AES-256-GCM · PBKDF2 310k rounds<br>Settings saved in your browser (localStorage).</p>
+        <button class="btn-ghost" id="btn-reset-settings" style="margin-top:10px;">Reset to defaults</button>
+      </div>
+    </div>
+  </div>
 
   <!-- ═══════════════════════════════════
        TAB 1 — HIDE FILES
@@ -316,7 +419,9 @@
       <!-- Keyboard hints -->
       <div class="kbd-hints">
         <span class="kbd"><span class="key">Space</span> Play/Pause</span>
-        <span class="kbd"><span class="key">← →</span> Navigate</span>
+        <span class="kbd"><span class="key">← →</span> Skip 10s (video) / Navigate (image)</span>
+        <span class="kbd"><span class="key">↑ ↓</span> Volume</span>
+        <span class="kbd"><span class="key">N / B</span> Next / Back file</span>
         <span class="kbd"><span class="key">M</span> Mute</span>
         <span class="kbd"><span class="key">F</span> Fullscreen</span>
         <span class="kbd"><span class="key">P</span> PiP</span>
@@ -335,8 +440,29 @@
         </div>
       </div>
 
-      <!-- Actual content (hidden while loading) -->
-      <div class="viewer-content" id="viewer-content"></div>
+      <!-- Auto-next countdown overlay -->
+      <div id="autonext-overlay" class="autonext-overlay hidden">
+        <div class="autonext-inner">
+          <div class="autonext-label">Next up</div>
+          <div class="autonext-name" id="autonext-name"></div>
+          <div class="autonext-countdown" id="autonext-countdown">5</div>
+          <button class="btn-ghost" id="btn-autonext-cancel">Cancel</button>
+        </div>
+      </div>
+
+      <!-- Content + skip buttons row -->
+      <div class="viewer-body">
+        <button class="skip-btn skip-left" id="btn-skip-back" title="Skip back (←)">&#8249;<div class="skip-label" id="skip-back-label">10s</div></button>
+        <div class="viewer-content" id="viewer-content"></div>
+        <button class="skip-btn skip-right" id="btn-skip-fwd" title="Skip forward (→)">&#8250;<div class="skip-label" id="skip-fwd-label">10s</div></button>
+      </div>
+
+      <!-- Volume bar (shows on ↑↓ key press) -->
+      <div id="volume-bar" class="volume-bar hidden">
+        <span id="volume-icon">🔊</span>
+        <div class="progress-bar-wrap" style="flex:1"><div class="progress-bar" id="volume-fill"></div></div>
+        <span id="volume-pct">100%</span>
+      </div>
 
       <!-- Navigation -->
       <div class="viewer-nav">
@@ -355,3 +481,4 @@
   <script src="app.js"></script>
 </body>
 </html>
+

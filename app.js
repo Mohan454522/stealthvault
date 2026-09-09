@@ -618,13 +618,24 @@ function toast(msg, type='') {
 // UI INITIALIZATION
 // ═══════════════════════════════════════════════════════════════════════
 
-// Tabs
-document.querySelectorAll('.tab-btn').forEach(b => b.addEventListener('click', () => {
+
+// Tabs — with persistence across page reloads
+const _TAB_KEY = 'sv-last-tab';
+function switchTab(tabName) {
   document.querySelectorAll('.tab-btn').forEach(x => x.classList.remove('active'));
   document.querySelectorAll('.tab-content').forEach(x => x.classList.remove('active'));
-  b.classList.add('active');
-  document.getElementById('tab-' + b.dataset.tab).classList.add('active');
-}));
+  const btn = document.querySelector(`.tab-btn[data-tab="${tabName}"]`);
+  if (btn) btn.classList.add('active');
+  const panel = document.getElementById('tab-' + tabName);
+  if (panel) panel.classList.add('active');
+  localStorage.setItem(_TAB_KEY, tabName);
+}
+document.querySelectorAll('.tab-btn').forEach(b => b.addEventListener('click', () => switchTab(b.dataset.tab)));
+// Restore last tab on load (DOMContentLoaded or immediately if already ready)
+(function() {
+  const last = localStorage.getItem(_TAB_KEY);
+  if (last && document.querySelector(`.tab-btn[data-tab="${last}"]`)) switchTab(last);
+})();
 
 // Password toggles
 [['hide-pw','toggle-hide-pw'],['open-pw','toggle-open-pw'],['cpw-old','toggle-cpw-old'],['cpw-new','toggle-cpw-new']].forEach(([id,btn])=>{
@@ -658,11 +669,14 @@ document.querySelectorAll('.mode-card').forEach(card => {
   });
 });
 
-// Worker badge
+// Worker badge — updated by updateWorkerBadge() after CONFIG loads
 document.addEventListener('DOMContentLoaded', () => {
-  const b = document.getElementById('worker-badge');
-  if (b) b.textContent = `${POOL_SZ} workers · 64 MB chunks`;
+  CONFIG = loadConfig();
+  if (typeof updateWorkerBadge === 'function') updateWorkerBadge();
+  if (typeof updateSkipLabels === 'function') updateSkipLabels();
+  if (typeof syncSettingsUI === 'function') syncSettingsUI();
 });
+
 
 // ═══════════════════════════════════════════════════════════════════════
 // ══ HIDE FILES ══════════════════════════════════════════════════════════
@@ -984,15 +998,25 @@ async function loadViewerContent() {
   const f = filteredItems[curIdx]; if (!f) return;
   const content = document.getElementById('viewer-content');
   const loading  = document.getElementById('viewer-loading');
+
+  // Cancel any pending auto-next countdown
+  cancelAutoNext();
+
+  // Pause and clear previous media
   if (activeMedia && activeMedia.pause) activeMedia.pause();
   activeMedia = null; content.innerHTML = '';
+
+  // Hide skip buttons until we know what type the file is
+  setSkipBtnsActive(false);
 
   document.getElementById('viewer-filename').textContent = f.name;
   document.getElementById('viewer-pos').textContent = `${curIdx+1} / ${filteredItems.length}`;
   updatePrefetchStatus();
 
+  const previewMax = getPreviewMax();
+
   // Show loading overlay if not already cached
-  if (!PM.isReady(curIdx) && f.size <= PREVIEW_MAX) {
+  if (!PM.isReady(curIdx) && f.size <= previewMax) {
     document.getElementById('vl-icon').textContent = getIcon(f.name);
     document.getElementById('vl-name').textContent = f.name;
     const prog = makeProgress(document.getElementById('viewer-dec-bar'), document.getElementById('viewer-dec-label'));
@@ -1014,7 +1038,6 @@ async function loadViewerContent() {
   loading.classList.add('hidden');
 
   if (!url) {
-    // File too large for in-browser preview
     content.innerHTML = `<div class="unsupported-file">
       <div class="big-icon">${getIcon(f.name)}</div>
       <p style="font-size:15px;font-weight:700;">${f.name}</p>
@@ -1024,11 +1047,19 @@ async function loadViewerContent() {
     return;
   }
 
-  // Render based on file type
+  // ── Render based on file type ──
   if (isVid(f.name)) {
+    // If currently fullscreen, swap the video source without exiting fullscreen
+    const wasFullscreen = document.fullscreenElement;
     const v = document.createElement('video');
-    v.src = url; v.controls = true; v.autoplay = true;
+    v.src = url; v.controls = true;
     content.appendChild(v); activeMedia = v;
+    attachVideoHandlers(v);   // auto-next when video ends
+    setSkipBtnsActive(true);  // show skip buttons
+    v.play().catch(() => {}); // autoplay (may be blocked, that's fine)
+    // Re-enter fullscreen if we were in it (browser handles this gracefully)
+    if (wasFullscreen) v.requestFullscreen().catch(() => {});
+
   } else if (isAud(f.name)) {
     const wrap = document.createElement('div');
     wrap.style.cssText = 'display:flex;flex-direction:column;align-items:center;width:100%;padding:20px 0;';
@@ -1037,23 +1068,31 @@ async function loadViewerContent() {
     name.style.cssText = 'font-size:15px;font-weight:700;margin-bottom:16px;';
     name.textContent = f.name;
     const a = document.createElement('audio');
-    a.src = url; a.controls = true; a.autoplay = true; a.style.width = 'min(500px,90%)';
+    a.src = url; a.controls = true; a.style.width = 'min(500px,90%)';
     wrap.appendChild(art); wrap.appendChild(name); wrap.appendChild(a);
     content.appendChild(wrap); activeMedia = a;
+    attachVideoHandlers(a);  // auto-next when audio ends
+    setSkipBtnsActive(true); // audio also gets skip buttons
+    a.play().catch(() => {});
     a.addEventListener('play',  () => art.classList.add('playing'));
     a.addEventListener('pause', () => art.classList.remove('playing'));
+
   } else if (isImg(f.name)) {
     const img = document.createElement('img'); img.src = url; img.alt = f.name;
     content.appendChild(img);
-    setTimeout(renderGallery, 0); // update gallery thumbnails
+    setSkipBtnsActive(false); // no skip for images — arrows navigate instead
+    setTimeout(renderGallery, 0);
+
   } else if (isPDF(f.name)) {
     const fr = document.createElement('iframe'); fr.src = url;
-    fr.style.cssText = 'width:100%;height:calc(96vh - 220px);border:none;';
+    fr.style.cssText = 'width:100%;height:calc(96vh - 240px);border:none;';
     content.appendChild(fr);
+
   } else if (isTxt(f.name)) {
     const text = await (await fetch(url)).text();
     const pre = document.createElement('pre'); pre.textContent = text;
     content.appendChild(pre);
+
   } else {
     content.innerHTML = `<div class="unsupported-file">
       <div class="big-icon">${getIcon(f.name)}</div>
@@ -1065,6 +1104,7 @@ async function loadViewerContent() {
   PM.triggerAround(curIdx);
   updatePrefetchStatus();
 }
+
 
 function updateViewerNav() {
   document.getElementById('btn-prev').disabled = (curIdx === 0);
@@ -1200,26 +1240,264 @@ function addCpwResult(ok, msg) {
   document.getElementById('cpw-results').appendChild(d);
 }
 
+
 // ═══════════════════════════════════════════════════════════════════════
-// KEYBOARD SHORTCUTS
+// SETTINGS PANEL
+// ═══════════════════════════════════════════════════════════════════════
+
+function openSettings() {
+  document.getElementById('settings-overlay').classList.remove('hidden');
+  document.getElementById('settings-panel').classList.add('open');
+  syncSettingsUI();
+}
+function closeSettings() {
+  document.getElementById('settings-overlay').classList.add('hidden');
+  document.getElementById('settings-panel').classList.remove('open');
+}
+
+// Sync chip/toggle UI to current CONFIG values
+function syncSettingsUI() {
+  setActiveChip('chunk-size-chips',    String(CONFIG.chunkSizeMB));
+  setActiveChip('worker-count-chips',  String(CONFIG.workerCount));
+  setActiveChip('skip-seconds-chips',  String(CONFIG.skipSeconds));
+  setActiveChip('autoplay-delay-chips',String(CONFIG.autoPlayDelay));
+  setActiveChip('prefetch-chips',      String(CONFIG.prefetchAhead));
+  setActiveChip('preview-limit-chips', String(CONFIG.previewLimitMB));
+  const tog = document.getElementById('toggle-autoplay');
+  if (tog) tog.checked = CONFIG.autoPlayNext;
+  document.getElementById('autoplay-delay-row').style.opacity = CONFIG.autoPlayNext ? '1' : '0.4';
+  updateWorkerBadge();
+}
+
+function setActiveChip(groupId, val) {
+  const group = document.getElementById(groupId); if (!group) return;
+  group.querySelectorAll('.chip').forEach(c => c.classList.toggle('active', c.dataset.val === val));
+}
+
+function updateWorkerBadge() {
+  const b = document.getElementById('worker-badge');
+  if (b) b.textContent = `${CONFIG.workerCount} workers · ${CONFIG.chunkSizeMB} MB chunks · skip ${CONFIG.skipSeconds}s`;
+}
+
+// Wire chip groups
+function wireChips(groupId, configKey, transform) {
+  const group = document.getElementById(groupId); if (!group) return;
+  group.addEventListener('click', e => {
+    const chip = e.target.closest('.chip'); if (!chip) return;
+    const val = transform ? transform(chip.dataset.val) : chip.dataset.val;
+    CONFIG[configKey] = val;
+    saveConfig(CONFIG);
+    syncSettingsUI();
+    // Update skip button labels live
+    updateSkipLabels();
+  });
+}
+
+wireChips('chunk-size-chips',    'chunkSizeMB',   Number);
+wireChips('worker-count-chips',  'workerCount',   Number);
+wireChips('skip-seconds-chips',  'skipSeconds',   Number);
+wireChips('autoplay-delay-chips','autoPlayDelay', Number);
+wireChips('prefetch-chips',      'prefetchAhead', Number);
+wireChips('preview-limit-chips', 'previewLimitMB',Number);
+
+const togAutoplay = document.getElementById('toggle-autoplay');
+if (togAutoplay) {
+  togAutoplay.addEventListener('change', () => {
+    CONFIG.autoPlayNext = togAutoplay.checked;
+    saveConfig(CONFIG);
+    syncSettingsUI();
+  });
+}
+
+document.getElementById('btn-open-settings').addEventListener('click', openSettings);
+document.getElementById('btn-close-settings').addEventListener('click', closeSettings);
+document.getElementById('settings-overlay').addEventListener('click', closeSettings);
+document.getElementById('btn-reset-settings').addEventListener('click', () => {
+  CONFIG = { ...CONFIG_DEFAULTS };
+  saveConfig(CONFIG);
+  syncSettingsUI();
+  toast('Settings reset to defaults.', 'success');
+});
+
+
+// ═══════════════════════════════════════════════════════════════════════
+// VIDEO SKIP CONTROLS + AUTO-NEXT
+// ═══════════════════════════════════════════════════════════════════════
+let autoNextTimer = null;
+
+function updateSkipLabels() {
+  const s = CONFIG.skipSeconds + 's';
+  const bl = document.getElementById('skip-back-label');
+  const fl = document.getElementById('skip-fwd-label');
+  if (bl) bl.textContent = s;
+  if (fl) fl.textContent = s;
+}
+
+function setSkipBtnsActive(active) {
+  ['btn-skip-back','btn-skip-fwd'].forEach(id => {
+    document.getElementById(id)?.classList.toggle('inactive', !active);
+  });
+}
+
+function skipMedia(dir) {
+  if (!activeMedia) return;
+  const t = activeMedia.currentTime + dir * CONFIG.skipSeconds;
+  activeMedia.currentTime = Math.max(0, Math.min(activeMedia.duration || 0, t));
+  showSkipFlash(dir);
+}
+
+// Brief flash animation when skipping
+function showSkipFlash(dir) {
+  const id = dir < 0 ? 'btn-skip-back' : 'btn-skip-fwd';
+  const btn = document.getElementById(id); if (!btn) return;
+  btn.style.color = 'var(--accent)';
+  setTimeout(() => btn.style.color = '', 300);
+}
+
+// Volume HUD
+let volHideTimer = null;
+function showVolumeHUD(vol) {
+  const bar  = document.getElementById('volume-bar');
+  const fill = document.getElementById('volume-fill');
+  const pct  = document.getElementById('volume-pct');
+  const icon = document.getElementById('volume-icon');
+  if (!bar) return;
+  bar.classList.remove('hidden');
+  fill.style.width = (vol * 100) + '%';
+  pct.textContent  = Math.round(vol * 100) + '%';
+  icon.textContent = vol === 0 ? '🔇' : vol < 0.5 ? '🔉' : '🔊';
+  clearTimeout(volHideTimer);
+  volHideTimer = setTimeout(() => bar.classList.add('hidden'), 1500);
+}
+
+// Auto-next countdown
+function startAutoNext() {
+  if (!CONFIG.autoPlayNext) return;
+  const nextItem = filteredItems[curIdx + 1];
+  if (!nextItem) return;
+
+  const overlay  = document.getElementById('autonext-overlay');
+  const nameEl   = document.getElementById('autonext-name');
+  const countEl  = document.getElementById('autonext-countdown');
+  nameEl.textContent = nextItem.name;
+
+  let secs = CONFIG.autoPlayDelay;
+  if (secs === 0) { overlay.classList.add('hidden'); navigateTo(curIdx + 1); return; }
+
+  countEl.textContent = secs;
+  overlay.classList.remove('hidden');
+  clearInterval(autoNextTimer);
+  autoNextTimer = setInterval(() => {
+    secs--;
+    countEl.textContent = secs;
+    if (secs <= 0) {
+      clearInterval(autoNextTimer); autoNextTimer = null;
+      overlay.classList.add('hidden');
+      navigateTo(curIdx + 1);
+    }
+  }, 1000);
+}
+
+function cancelAutoNext() {
+  clearInterval(autoNextTimer); autoNextTimer = null;
+  document.getElementById('autonext-overlay')?.classList.add('hidden');
+}
+
+document.getElementById('btn-autonext-cancel')?.addEventListener('click', cancelAutoNext);
+document.getElementById('btn-skip-back')?.addEventListener('click', () => skipMedia(-1));
+document.getElementById('btn-skip-fwd')?.addEventListener('click',  () => skipMedia(+1));
+
+// Attach video ended handler whenever a new video is loaded
+// (called from loadViewerContent after creating the <video> element)
+function attachVideoHandlers(videoEl) {
+  videoEl.addEventListener('ended', () => {
+    cancelAutoNext();
+    startAutoNext();
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// KEYBOARD SHORTCUTS — context-aware
 // ═══════════════════════════════════════════════════════════════════════
 document.addEventListener('keydown', e => {
+  // Settings panel: Escape closes it
+  if (!document.getElementById('settings-panel').classList.contains('open')) {
+    if (e.key === 'Escape' && !document.getElementById('viewer-modal').classList.contains('hidden')) {
+      closeViewer(); return;
+    }
+  } else {
+    if (e.key === 'Escape') { closeSettings(); return; }
+  }
+
   if (document.getElementById('viewer-modal').classList.contains('hidden')) return;
-  // Don't fire shortcuts when typing in an input
-  if (e.target.tagName==='INPUT' || e.target.tagName==='TEXTAREA') return;
+  if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+
+  const isMedia = activeMedia && (activeMedia.tagName === 'VIDEO' || activeMedia.tagName === 'AUDIO');
+
   switch (e.key) {
-    case 'Escape':     closeViewer(); break;
+    // ── Navigation (always works regardless of media type) ──
+    case 'n': case 'N':
+      e.preventDefault(); cancelAutoNext(); if (curIdx < filteredItems.length-1) navigateTo(curIdx+1); break;
+    case 'b': case 'B':
+      e.preventDefault(); cancelAutoNext(); if (curIdx > 0) navigateTo(curIdx-1); break;
+
+    // ── Context-aware arrows ──
     case 'ArrowLeft':
-    case 'ArrowUp':    e.preventDefault(); if (curIdx>0) navigateTo(curIdx-1); break;
+      e.preventDefault();
+      if (isMedia) skipMedia(-1);                                       // skip video back
+      else { cancelAutoNext(); if (curIdx>0) navigateTo(curIdx-1); }   // navigate
+      break;
     case 'ArrowRight':
-    case 'ArrowDown':  e.preventDefault(); if (curIdx<filteredItems.length-1) navigateTo(curIdx+1); break;
+      e.preventDefault();
+      if (isMedia) skipMedia(+1);                                              // skip video forward
+      else { cancelAutoNext(); if (curIdx<filteredItems.length-1) navigateTo(curIdx+1); } // navigate
+      break;
+
+    // ── Volume (up/down arrows, only when media is active) ──
+    case 'ArrowUp':
+      if (isMedia) { e.preventDefault(); activeMedia.volume = Math.min(1, activeMedia.volume + 0.1); showVolumeHUD(activeMedia.volume); }
+      break;
+    case 'ArrowDown':
+      if (isMedia) { e.preventDefault(); activeMedia.volume = Math.max(0, activeMedia.volume - 0.1); showVolumeHUD(activeMedia.volume); }
+      break;
+
+    // ── Playback ──
     case ' ': {
-      const m = activeMedia;
-      if (m && (m.tagName==='VIDEO'||m.tagName==='AUDIO')) { e.preventDefault(); m.paused ? m.play() : m.pause(); }
+      if (isMedia) { e.preventDefault(); activeMedia.paused ? activeMedia.play() : activeMedia.pause(); }
       break;
     }
-    case 'm': case 'M': { const m=activeMedia; if(m){ m.muted=!m.muted; toast(m.muted?'🔇 Muted':'🔊 Unmuted'); } break; }
-    case 'f': case 'F': { const m=activeMedia; if(m&&m.tagName==='VIDEO') document.fullscreenElement ? document.exitFullscreen() : m.requestFullscreen(); break; }
-    case 'p': case 'P': { const m=activeMedia; if(m&&m.tagName==='VIDEO') document.pictureInPictureElement ? document.exitPictureInPicture() : m.requestPictureInPicture().catch(()=>toast('PiP not available.','error')); break; }
+    case 'm': case 'M':
+      if (activeMedia) { activeMedia.muted = !activeMedia.muted; showVolumeHUD(activeMedia.muted ? 0 : activeMedia.volume); }
+      break;
+    case 'f': case 'F': {
+      if (activeMedia && activeMedia.tagName === 'VIDEO') {
+        if (document.fullscreenElement) document.exitFullscreen();
+        else activeMedia.requestFullscreen();
+      }
+      break;
+    }
+    case 'p': case 'P': {
+      if (activeMedia && activeMedia.tagName === 'VIDEO')
+        document.pictureInPictureElement
+          ? document.exitPictureInPicture()
+          : activeMedia.requestPictureInPicture().catch(() => toast('PiP not available.', 'error'));
+      break;
+    }
   }
+});
+
+// ── Fullscreen navigation fix ──
+// When in fullscreen and navigating, stay in fullscreen — swap src, don't re-enter
+document.addEventListener('fullscreenchange', () => {
+  // Track fullscreen state so navigateTo can decide whether to re-enter
+  window._svFullscreen = !!document.fullscreenElement;
+});
+
+// ═══════════════════════════════════════════════════════════════════════
+// INITIALISE ON DOM READY
+// ═══════════════════════════════════════════════════════════════════════
+document.addEventListener('DOMContentLoaded', () => {
+  CONFIG = loadConfig();
+  syncSettingsUI();
+  updateSkipLabels();
 });
