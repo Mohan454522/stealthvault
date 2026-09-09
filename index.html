@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>StealthVault</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="grid-bg"></div>
+  <div class="orb1"></div><div class="orb2"></div>
+
+  <!-- ══ NAV ══ -->
+  <nav>
+    <div class="nav-inner wrap">
+      <div class="logo">&#9632; STEALTH<span>VAULT</span></div>
+      <div class="nav-tabs">
+        <button class="tab-btn active" data-tab="hide">Hide Files</button>
+        <button class="tab-btn" data-tab="open">Open Vault</button>
+        <button class="tab-btn" data-tab="changepw">Change Password</button>
+      </div>
+      <div id="worker-badge" class="worker-badge">loading…</div>
+    </div>
+  </nav>
+
+  <!-- ═══════════════════════════════════
+       TAB 1 — HIDE FILES
+  ════════════════════════════════════ -->
+  <main id="tab-hide" class="tab-content active wrap">
+    <div class="hero">
+      <div class="badge">&#9679; VAULT CREATOR</div>
+      <h1>Hide Your Files</h1>
+      <p class="hero-sub">Select files to hide, choose a cover image, pick a passphrase, and save — no downloads, no traces.</p>
+    </div>
+
+    <div class="card">
+
+      <!-- STEP 1: Secret Files -->
+      <div class="step">
+        <div class="step-num">01</div>
+        <div class="step-body">
+          <h3>Select Files to Hide</h3>
+          <p>Add individual files or a whole folder. Mix any file types — videos, photos, PDFs, anything.</p>
+          <div class="btn-row">
+            <button class="btn-primary" id="btn-pick-secret-files">&#128196; Select Files</button>
+            <button class="btn-primary" id="btn-pick-secret-folder">&#128193; Select Folder</button>
+            <button class="btn-ghost" id="btn-clear-secrets">&#215; Clear All</button>
+          </div>
+          <input type="file" id="input-secret-files" multiple hidden />
+          <div id="secrets-list" class="file-list"></div>
+          <div id="secrets-summary" class="file-summary hidden"></div>
+        </div>
+      </div>
+
+      <!-- STEP 2: Cover Image -->
+      <div class="step">
+        <div class="step-num">02</div>
+        <div class="step-body">
+          <h3>Select Cover Image</h3>
+          <p>An innocent-looking photo that anyone opening the file will see. Your files are hidden behind it.</p>
+          <button class="btn-primary" id="btn-pick-dummy">&#128247; Choose Image</button>
+          <input type="file" id="input-dummy" accept="image/jpeg,image/jpg,image/png" hidden />
+          <div id="dummy-name" class="file-summary hidden"></div>
+          <div id="dummy-preview" class="dummy-preview"></div>
+        </div>
+      </div>
+
+      <!-- STEP 3: Bundling Mode -->
+      <div class="step">
+        <div class="step-num">03</div>
+        <div class="step-body">
+          <h3>Bundling Mode</h3>
+          <p>How should the files be packaged?</p>
+          <div class="mode-cards">
+            <label class="mode-card active" data-mode="one-to-one">
+              <input type="radio" name="hide-mode" value="one-to-one" checked hidden />
+              <div class="mode-icon">&#128196;</div>
+              <div class="mode-label">One file per image</div>
+              <div class="mode-desc">Each file gets its own disguised image. 10 files = 10 images.</div>
+            </label>
+            <label class="mode-card" data-mode="all-in-one">
+              <input type="radio" name="hide-mode" value="all-in-one" hidden />
+              <div class="mode-icon">&#128218;</div>
+              <div class="mode-label">All files in one image</div>
+              <div class="mode-desc">All files bundled into a single disguised image. Browse all from one vault.</div>
+            </label>
+            <label class="mode-card" data-mode="same-dummy">
+              <input type="radio" name="hide-mode" value="same-dummy" hidden />
+              <div class="mode-icon">&#128084;</div>
+              <div class="mode-label">Each file, same cover</div>
+              <div class="mode-desc">Each file gets a copy of the same cover image. Named cover_001.jpg, cover_002.jpg…</div>
+            </label>
+          </div>
+        </div>
+      </div>
+
+      <!-- STEP 4: Output Folder -->
+      <div class="step">
+        <div class="step-num">04</div>
+        <div class="step-body">
+          <h3>Output Folder</h3>
+          <p>Encrypted images save directly here — no Downloads folder, no temp files.</p>
+          <button class="btn-primary" id="btn-pick-output-folder">&#128193; Select Output Folder</button>
+          <div id="output-folder-status" class="folder-status"></div>
+        </div>
+      </div>
+
+      <!-- STEP 5: Passphrase -->
+      <div class="step">
+        <div class="step-num">05</div>
+        <div class="step-body">
+          <h3>Passphrase</h3>
+          <p>All files will be encrypted with AES-256 using this passphrase. Use at least 8 characters.</p>
+          <div class="password-wrap">
+            <input type="password" id="hide-pw" class="input-text" placeholder="Enter a strong passphrase…" />
+            <button class="btn-icon" id="toggle-hide-pw">&#128065;</button>
+          </div>
+          <div class="password-wrap" style="margin-top:10px;">
+            <input type="password" id="hide-pw-confirm" class="input-text" placeholder="Confirm passphrase…" />
+          </div>
+        </div>
+      </div>
+
+      <!-- Output file name list (dynamic) -->
+      <div id="output-names-section" class="hidden">
+        <div class="section-divider">Output File Names <span class="section-hint">— click any name to rename</span></div>
+        <div id="output-names-list" class="output-names-list"></div>
+      </div>
+
+      <!-- Encrypt button -->
+      <div class="action-row">
+        <button class="btn-action" id="btn-stitch">&#128274; Encrypt &amp; Save</button>
+      </div>
+
+      <!-- Progress -->
+      <div id="stitch-progress" class="progress-area hidden">
+        <div class="progress-bar-wrap"><div class="progress-bar" id="stitch-bar"></div></div>
+        <div class="progress-label" id="stitch-label">Processing…</div>
+        <div id="stitch-results" class="stitch-results"></div>
+      </div>
+
+    </div><!-- /card -->
+  </main>
+
+  <!-- ═══════════════════════════════════
+       TAB 2 — OPEN VAULT
+  ════════════════════════════════════ -->
+  <main id="tab-open" class="tab-content wrap">
+    <div class="hero">
+      <div class="badge">&#9679; VAULT EXPLORER</div>
+      <h1>Open Your Vault</h1>
+      <p class="hero-sub">Select one disguised image or a whole vault folder. Enter your password. Everything lives in RAM — zero trace when you close the tab.</p>
+    </div>
+
+    <!-- Unlock panel -->
+    <div class="card" id="unlock-panel">
+      <div class="step">
+        <div class="step-num">01</div>
+        <div class="step-body">
+          <h3>Select Vault</h3>
+          <p>Open a single vault image or your entire hidden folder at once.</p>
+          <div class="btn-row">
+            <button class="btn-primary" id="btn-open-file">&#128196; Open Image(s)</button>
+            <button class="btn-primary" id="btn-open-folder">&#128193; Open Folder</button>
+          </div>
+          <div id="vault-load-status" class="folder-status"></div>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">02</div>
+        <div class="step-body">
+          <h3>Enter Password</h3>
+          <div class="password-wrap">
+            <input type="password" id="open-pw" class="input-text" placeholder="Your passphrase…" />
+            <button class="btn-icon" id="toggle-open-pw">&#128065;</button>
+          </div>
+        </div>
+      </div>
+      <div class="action-row">
+        <button class="btn-action" id="btn-unlock">&#128275; Unlock Vault</button>
+      </div>
+      <div id="unlock-error" class="error-msg hidden"></div>
+    </div>
+
+    <!-- Gallery panel -->
+    <div id="gallery-panel" class="hidden">
+      <div class="gallery-toolbar">
+        <div class="gallery-info">
+          <span id="gallery-count">0 files</span>
+          <input type="text" id="search-box" class="search-box" placeholder="&#128269; Search…" />
+        </div>
+        <div class="view-toggle">
+          <button class="view-btn active" id="btn-grid-view" title="Grid">&#9783;</button>
+          <button class="view-btn" id="btn-list-view" title="List">&#9776;</button>
+        </div>
+        <button class="btn-lock" id="btn-lock-vault">&#128274; Lock &amp; Clear</button>
+      </div>
+      <div id="file-grid" class="file-grid"></div>
+    </div>
+  </main>
+
+  <!-- ═══════════════════════════════════
+       TAB 3 — CHANGE PASSWORD
+  ════════════════════════════════════ -->
+  <main id="tab-changepw" class="tab-content wrap">
+    <div class="hero">
+      <div class="badge">&#9679; PASSWORD MANAGER</div>
+      <h1>Change Password</h1>
+      <p class="hero-sub">Select vault images, enter the current password, set a new one. Files are re-encrypted in a single streaming pass — no full file in RAM.</p>
+    </div>
+
+    <div class="card">
+
+      <!-- Step 1: Pick vault files -->
+      <div class="step">
+        <div class="step-num">01</div>
+        <div class="step-body">
+          <h3>Select Vault Images</h3>
+          <p>Pick the disguised image files you want to re-encrypt.</p>
+          <div class="btn-row">
+            <button class="btn-primary" id="btn-cpw-pick-files">&#128196; Select Images</button>
+            <button class="btn-primary" id="btn-cpw-pick-folder">&#128193; Select Folder</button>
+          </div>
+          <div id="cpw-files-list" class="file-list"></div>
+        </div>
+      </div>
+
+      <!-- Step 2: Three password boxes -->
+      <div class="step">
+        <div class="step-num">02</div>
+        <div class="step-body">
+          <h3>Passwords</h3>
+          <div class="pw-triple">
+            <div class="pw-triple-item">
+              <label>Current password</label>
+              <div class="password-wrap">
+                <input type="password" id="cpw-old" class="input-text" placeholder="Current passphrase…" />
+                <button class="btn-icon" id="toggle-cpw-old">&#128065;</button>
+              </div>
+            </div>
+            <div class="pw-triple-item">
+              <label>New password</label>
+              <div class="password-wrap">
+                <input type="password" id="cpw-new" class="input-text" placeholder="New passphrase…" />
+                <button class="btn-icon" id="toggle-cpw-new">&#128065;</button>
+              </div>
+            </div>
+            <div class="pw-triple-item">
+              <label>Confirm new password</label>
+              <div class="password-wrap">
+                <input type="password" id="cpw-new-confirm" class="input-text" placeholder="Confirm new passphrase…" />
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Step 3: Save mode -->
+      <div class="step">
+        <div class="step-num">03</div>
+        <div class="step-body">
+          <h3>Save Mode</h3>
+          <div class="mode-cards" style="grid-template-columns:1fr 1fr;">
+            <label class="mode-card active" data-mode="newcopy">
+              <input type="radio" name="cpw-save-mode" value="newcopy" checked hidden />
+              <div class="mode-icon">&#128196;</div>
+              <div class="mode-label">Save as new copies</div>
+              <div class="mode-desc">Re-encrypted files go to a different folder. Originals untouched.</div>
+            </label>
+            <label class="mode-card" data-mode="overwrite">
+              <input type="radio" name="cpw-save-mode" value="overwrite" hidden />
+              <div class="mode-icon">&#9998;</div>
+              <div class="mode-label">Overwrite originals</div>
+              <div class="mode-desc">Replace originals in place. Select the vault folder for write access.</div>
+            </label>
+          </div>
+          <div id="cpw-output-folder-row" style="margin-top:14px;">
+            <button class="btn-primary" id="btn-cpw-output-folder">&#128193; Select Output Folder</button>
+            <div id="cpw-output-status" class="folder-status"></div>
+          </div>
+          <div id="cpw-source-folder-row" class="hidden" style="margin-top:14px;">
+            <button class="btn-primary" id="btn-cpw-source-folder">&#128193; Select Vault Folder (write access needed)</button>
+            <div id="cpw-source-status" class="folder-status"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="action-row">
+        <button class="btn-action" id="btn-cpw-process">&#128260; Change Password</button>
+      </div>
+      <div id="cpw-progress" class="progress-area hidden">
+        <div class="progress-bar-wrap"><div class="progress-bar" id="cpw-bar"></div></div>
+        <div class="progress-label" id="cpw-label">Processing…</div>
+        <div id="cpw-results" class="stitch-results"></div>
+      </div>
+    </div>
+  </main>
+
+  <!-- ═══════════════════════════════════
+       VIEWER MODAL
+  ════════════════════════════════════ -->
+  <div id="viewer-modal" class="viewer-modal hidden">
+    <div class="viewer-backdrop" id="viewer-backdrop"></div>
+    <div class="viewer-container">
+
+      <!-- Header bar -->
+      <div class="viewer-header">
+        <span class="viewer-filename" id="viewer-filename">filename</span>
+        <div class="viewer-header-actions">
+          <span class="viewer-pos" id="viewer-pos">1 / 1</span>
+          <button class="viewer-btn" id="btn-export" title="Stream-decrypt to disk — no RAM spike">&#11123; Export</button>
+          <button class="viewer-btn" id="btn-close-viewer" title="Close (Esc)">&#10005;</button>
+        </div>
+      </div>
+
+      <!-- Keyboard hints -->
+      <div class="kbd-hints">
+        <span class="kbd"><span class="key">Space</span> Play/Pause</span>
+        <span class="kbd"><span class="key">← →</span> Navigate</span>
+        <span class="kbd"><span class="key">M</span> Mute</span>
+        <span class="kbd"><span class="key">F</span> Fullscreen</span>
+        <span class="kbd"><span class="key">P</span> PiP</span>
+        <span class="kbd"><span class="key">Esc</span> Close</span>
+      </div>
+
+      <!-- Loading overlay — shown while decrypting, hidden once ready -->
+      <div id="viewer-loading" class="viewer-loading hidden">
+        <div class="vl-icon" id="vl-icon">🔒</div>
+        <div class="vl-name" id="vl-name">Decrypting…</div>
+        <div class="vl-progress-wrap">
+          <div class="progress-bar-wrap">
+            <div class="progress-bar" id="viewer-dec-bar"></div>
+          </div>
+          <div class="progress-label" id="viewer-dec-label">Starting…</div>
+        </div>
+      </div>
+
+      <!-- Actual content (hidden while loading) -->
+      <div class="viewer-content" id="viewer-content"></div>
+
+      <!-- Navigation -->
+      <div class="viewer-nav">
+        <button class="nav-btn" id="btn-prev">&#8592; Prev</button>
+        <div class="viewer-nav-center">
+          <div class="viewer-nav-info" id="viewer-nav-dots"></div>
+          <div class="prefetch-status" id="prefetch-status"></div>
+        </div>
+        <button class="nav-btn" id="btn-next">Next &#8594;</button>
+      </div>
+
+    </div>
+  </div>
+
+  <div id="toast" class="toast hidden"></div>
+  <script src="app.js"></script>
+</body>
+</html>
