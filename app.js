@@ -940,6 +940,9 @@ document.getElementById('btn-lock-vault').addEventListener('click', () => {
   PM.clearAll();
   unlockedItems=[]; filteredItems=[]; vaultEntries=[]; vaultPw='';
   closeViewer();
+  // Also hide inline CPW panel and reset its state
+  document.getElementById('inline-cpw-panel').classList.add('hidden');
+  document.getElementById('btn-toggle-inline-cpw').classList.remove('active');
   document.getElementById('unlock-panel').classList.remove('hidden');
   document.getElementById('gallery-panel').classList.add('hidden');
   document.getElementById('file-grid').innerHTML='';
@@ -949,6 +952,101 @@ document.getElementById('btn-lock-vault').addEventListener('click', () => {
   document.getElementById('unlock-error').classList.add('hidden');
   toast('Vault locked. Memory cleared.');
 });
+
+// ═══════════════════════════════════════════════════════════════════════
+// INLINE CHANGE PASSWORD (inside Open Vault tab)
+// ═══════════════════════════════════════════════════════════════════════
+let inlineCpwDir = null;
+
+document.getElementById('btn-toggle-inline-cpw').addEventListener('click', () => {
+  const panel = document.getElementById('inline-cpw-panel');
+  const btn   = document.getElementById('btn-toggle-inline-cpw');
+  const isOpen = !panel.classList.contains('hidden');
+  panel.classList.toggle('hidden', isOpen);
+  btn.classList.toggle('active', !isOpen);
+  if (!isOpen) {
+    // Pre-fill the old-password field from current vault password
+    const oldEl = document.getElementById('inline-cpw-old');
+    if (oldEl && vaultPw) oldEl.value = vaultPw;
+    // Show file count
+    const vaultImageCount = [...new Set(unlockedItems.map(f => f.imageFile))].length;
+    document.getElementById('inline-cpw-count').textContent = vaultImageCount;
+  }
+});
+
+// Password show/hide toggles for inline CPW fields
+[['inline-cpw-old','toggle-inline-cpw-old'],['inline-cpw-new','toggle-inline-cpw-new']].forEach(([id,btn]) => {
+  const b = document.getElementById(btn); if (!b) return;
+  b.addEventListener('click', () => {
+    const el = document.getElementById(id);
+    el.type = el.type==='password' ? 'text' : 'password';
+    b.textContent = el.type==='password' ? '👁' : '🙈';
+  });
+});
+
+document.getElementById('btn-inline-cpw-folder').addEventListener('click', async () => {
+  try {
+    inlineCpwDir = await window.showDirectoryPicker({mode:'readwrite'});
+    const el = document.getElementById('inline-cpw-folder-status');
+    el.className = 'folder-status loaded';
+    el.textContent = `✔ "${inlineCpwDir.name}"`;
+  } catch(e) { if (e.name!=='AbortError') toast('Error: '+e.message,'error'); }
+});
+
+document.getElementById('btn-inline-cpw-go').addEventListener('click', async () => {
+  const oldPw  = document.getElementById('inline-cpw-old').value;
+  const newPw  = document.getElementById('inline-cpw-new').value.trim();
+  const newPw2 = document.getElementById('inline-cpw-confirm').value.trim();
+
+  if (!oldPw)              return toast('Enter the current password.', 'error');
+  if (!newPw)              return toast('Enter a new password.', 'error');
+  if (newPw !== newPw2)    return toast('New passwords do not match.', 'error');
+  if (newPw.length < 8)   return toast('New password must be at least 8 characters.', 'error');
+  if (!inlineCpwDir)       return toast('Select an output folder first.', 'error');
+
+  // Get the unique vault image files
+  const seen    = new Set();
+  const sources = [];
+  for (const item of unlockedItems) {
+    if (!seen.has(item.imageFile)) {
+      seen.add(item.imageFile);
+      sources.push({ name: item.imageFile.name, file: item.imageFile });
+    }
+  }
+
+  const btn   = document.getElementById('btn-inline-cpw-go'); btn.disabled = true;
+  const pArea = document.getElementById('inline-cpw-progress'); pArea.classList.remove('hidden');
+  document.getElementById('inline-cpw-results').innerHTML = '';
+  const prog  = makeProgress(document.getElementById('inline-cpw-bar'), document.getElementById('inline-cpw-label'));
+
+  for (let i=0; i<sources.length; i++) {
+    const src = sources[i];
+    prog.start(`[${i+1}/${sources.length}] ${src.name}…`);
+    try {
+      const outFH = await inlineCpwDir.getFileHandle(src.name, {create:true});
+      await vaultChangePassword(src.file, oldPw, newPw, outFH, (done, tot) => {
+        if (done === null) prog.finalizing();
+        else               prog.update(done, tot);
+      });
+      const row = document.createElement('div');
+      row.className = 'stitch-result-item ok';
+      row.textContent = `✔ ${src.name} — password changed`;
+      document.getElementById('inline-cpw-results').appendChild(row);
+    } catch(err) {
+      const row = document.createElement('div');
+      row.className = 'stitch-result-item err';
+      row.textContent = `✖ ${src.name}: ${err.message}`;
+      document.getElementById('inline-cpw-results').appendChild(row);
+    }
+  }
+
+  prog.finish(`✔ Done — ${sources.length} vault image(s) updated. New copies saved to "${inlineCpwDir.name}".`);
+  btn.disabled = false;
+  toast('Password changed! Load the new copies to continue.', 'success');
+  // Update vaultPw in memory so the currently-open vault still works
+  vaultPw = newPw;
+});
+
 
 // ═══════════════════════════════════════════════════════════════════════
 // GALLERY

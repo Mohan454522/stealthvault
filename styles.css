@@ -277,6 +277,22 @@ nav {
   font-size: 14px; transition: all var(--t); display: flex; align-items: center; justify-content: center;
 }
 .view-btn:hover, .view-btn.active { border-color: var(--accent2); color: var(--accent); background: var(--adim); }
+/* Small button variant for toolbars */
+.btn-sm { padding: 6px 12px !important; font-size: 12px !important; height: 32px; }
+
+/* ══ INLINE CHANGE PASSWORD PANEL ══ */
+.inline-cpw {
+  background: var(--surface); border: 1px solid var(--border2); border-radius: 12px;
+  padding: 20px 24px; margin-bottom: 16px;
+  animation: slide-down 0.2s ease;
+}
+@keyframes slide-down {
+  from { opacity: 0; transform: translateY(-8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.inline-cpw-title { font-size: 14px; font-weight: 700; margin-bottom: 8px; }
+.inline-cpw-desc { font-size: 13px; color: var(--text2); margin-bottom: 16px; line-height: 1.5; }
+.inline-cpw-fields { display: flex; flex-direction: column; gap: 10px; }
 
 /* ══ FILE GRID / CARDS ══ */
 .file-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px,1fr)); gap: 12px; }
