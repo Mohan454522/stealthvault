@@ -227,6 +227,17 @@ nav {
 }
 .progress-bar { height: 100%; width: 0%; border-radius: 3px; transition: width 0.25s linear;
   background: linear-gradient(90deg, var(--accent), var(--purple)); }
+/* Pulsing shimmer shown during the "Finalizing" phase (writable.close() blocking) */
+.progress-bar.pulsing {
+  background-size: 200% 100%;
+  background-image: linear-gradient(90deg, var(--accent), var(--purple), var(--accent));
+  animation: bar-shimmer 1.2s ease-in-out infinite;
+  transition: none;
+}
+@keyframes bar-shimmer {
+  0%   { background-position: 100% 0; }
+  100% { background-position: -100% 0; }
+}
 .progress-label { font-size: 12px; color: var(--text2); font-family: var(--mono); }
 .stitch-results { margin-top: 14px; display: flex; flex-direction: column; gap: 6px; }
 .stitch-result-item { font-size: 13px; padding: 8px 12px; border-radius: 7px; }

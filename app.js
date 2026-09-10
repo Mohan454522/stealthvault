@@ -177,17 +177,24 @@ function makeProgress(barEl, labelEl) {
   return {
     start(label) {
       t0 = Date.now();
-      if (barEl)   barEl.style.width = '0%';
+      if (barEl)   { barEl.style.width = '0%'; barEl.classList.remove('pulsing'); }
       if (labelEl) labelEl.textContent = label;
     },
     update(done, total) {
       const spd = done / Math.max((Date.now()-t0)/1000, 0.001);
-      const pct = total > 0 ? Math.min(Math.round(done/total*100), 99) : 0;
-      if (barEl)   barEl.style.width = pct + '%';
+      // Cap at 98% — the last 2% is reserved for the "Finalizing" phase below
+      const pct = total > 0 ? Math.min(Math.round(done/total*100), 98) : 0;
+      if (barEl)   { barEl.style.width = pct + '%'; barEl.classList.remove('pulsing'); }
       if (labelEl) labelEl.textContent = `${fmtBytes(done)} / ${fmtBytes(total)} · ${fmtSpd(spd)} · ${fmtEta(total-done, spd)}`;
     },
+    // Call this between finishing the chunk loop and calling writable.close()
+    // writable.close() can block for several seconds on large files while the OS flushes
+    finalizing() {
+      if (barEl)   { barEl.style.width = '99%'; barEl.classList.add('pulsing'); }
+      if (labelEl) labelEl.textContent = 'Finalizing — flushing to disk… (do not close)';
+    },
     finish(msg = '✔ Done') {
-      if (barEl)   barEl.style.width = '100%';
+      if (barEl)   { barEl.style.width = '100%'; barEl.classList.remove('pulsing'); }
       if (labelEl) labelEl.textContent = msg;
     }
   };
@@ -269,12 +276,13 @@ async function vaultEncrypt(files, password, coverArrayBuf, outFH, onProgress) {
     }
   }
 
-  // Finalizing phase: writable.close() flushes bytes to disk (can take seconds for large files)
-  // Callers should show a "Finalizing…" state at this point
+  // Signal "finalizing" to UI — writable.close() blocks while OS flushes to disk
+  if (onProgress) onProgress(null, null);
   await writable.write(wu64(coverSize));   // ← trailer
   await writable.write(wu32(headerSize));  // ← trailer
   await writable.write(END_MARKER);        // ← trailer (unique 8 bytes)
   await writable.close();
+  if (onProgress) onProgress(totalBytes, totalBytes); // signal 100%
   await POOL.rst();
 }
 
@@ -540,7 +548,7 @@ class PrefetchManager {
     // Start new prefetches
     for (const idx of keep) {
       const item = this._items[idx];
-      if (!item || this._cache.has(item) || item.size > PREVIEW_MAX) continue;
+      if (!item || this._cache.has(item) || item.size > getPreviewMax()) continue;
       this._startOne(item);
     }
     updatePrefetchStatus();
@@ -565,8 +573,10 @@ class PrefetchManager {
       }
       await w.rst(); w.kill(); st.worker = null;
       st.url = URL.createObjectURL(new Blob([result], {type:item.mime}));
+      // Refresh gallery card thumbnails now that this item is ready
+      setTimeout(renderGallery, 0);
       return st.url;
-    })().catch(() => null); // silent failure — next click will decrypt normally
+    })().catch(() => null);
     this._cache.set(item, st);
   }
 
@@ -580,7 +590,7 @@ class PrefetchManager {
   async get(idx, onProgress) {
     const item = this._items[idx];
     if (!item) return null;
-    if (item.size > PREVIEW_MAX) return null; // too large for in-browser preview
+    if (item.size > getPreviewMax()) return null; // too large for in-browser preview
 
     const st = this._cache.get(item);
     if (st) {
@@ -817,14 +827,17 @@ document.getElementById('btn-stitch').addEventListener('click', async () => {
     prog.start(`[${i+1}/${batches.length}] Encrypting ${name}…`);
     try {
       const outFH = await outputDirHandle.getFileHandle(name, {create:true});
-      await vaultEncrypt(batch, pw1, dummyBuf, outFH, (done,tot) => prog.update(done, tot));
-      addResultRow(true, `${name}  (${fmtBytes(total)})  ✔ saved`);
+      await vaultEncrypt(batch, pw1, dummyBuf, outFH, (done, tot) => {
+        if (done === null) prog.finalizing();  // signal from vaultEncrypt before close()
+        else               prog.update(done, tot);
+      });
+      addResultRow(true, `${name}  (${fmtBytes(total)})  ✔ saved to "${outputDirHandle.name}"`);
     } catch(err) {
       addResultRow(false, `${name}: ${err.message}`);
     }
   }
 
-  prog.finish('All files encrypted and saved!');
+  prog.finish(`✔ All ${batches.length} file(s) encrypted and saved!`);
   btn.disabled = false;
   toast('Encryption complete!', 'success');
 });
@@ -851,9 +864,12 @@ document.getElementById('btn-open-file').addEventListener('click', async () => {
     vaultEntries = picks.map(h => ({name:h.name, handle:h}));
     const vls = document.getElementById('vault-load-status');
     vls.className = 'folder-status loaded';
-    vls.textContent = picks.length===1
-      ? `✔ Selected: ${picks[0].name}`
-      : `✔ ${picks.length} vault files selected`;
+    if (picks.length === 1) {
+      const f = await picks[0].getFile();
+      vls.textContent = `✔ ${picks[0].name}  (${fmtBytes(f.size)})`;
+    } else {
+      vls.textContent = `✔ ${picks.length} vault images selected`;
+    }
   } catch(e) { if (e.name!=='AbortError') toast('Error: '+e.message,'error'); }
 });
 
@@ -881,20 +897,34 @@ document.getElementById('btn-unlock').addEventListener('click', async () => {
   const btn = document.getElementById('btn-unlock');
   btn.disabled = true; btn.textContent = '⏳ Reading vault…';
 
-  const items = [];
+  const items   = [];
+  let   skipped = 0;
   for (const entry of vaultEntries) {
     try {
       const file = entry.file || await entry.handle.getFile();
-      items.push(...await vaultReadMeta(file, pw));
-    } catch { /* wrong pw or not a vault — silently skip */ }
+      const found = await vaultReadMeta(file, pw);
+      items.push(...found);
+    } catch {
+      // Wrong password or not a vault file — silently skip this image
+      skipped++;
+    }
   }
 
   btn.disabled = false; btn.textContent = '🔓 Unlock Vault';
 
   if (!items.length) {
     errEl.classList.remove('hidden');
-    errEl.textContent = 'Incorrect password, or no StealthVault v6 files found.';
+    errEl.textContent = skipped > 0
+      ? `Incorrect password — none of the ${skipped} selected image(s) matched.`
+      : 'No StealthVault v6 files found in the selection.';
     return;
+  }
+
+  // Some files opened, some may have been skipped (different passwords — that's fine)
+  if (skipped > 0) {
+    toast(`${items.length} file(s) unlocked · ${skipped} image(s) skipped (different password or not a vault).`, 'success');
+  } else {
+    toast(`🔓 ${items.length} file(s) unlocked.`, 'success');
   }
 
   vaultPw = pw; unlockedItems = items; filteredItems = [...items];
@@ -903,7 +933,6 @@ document.getElementById('btn-unlock').addEventListener('click', async () => {
   document.getElementById('gallery-panel').classList.remove('hidden');
   renderGallery();
   PM.triggerAround(0);
-  toast(`🔓 ${items.length} file(s) unlocked.`, 'success');
 });
 
 // Lock vault
