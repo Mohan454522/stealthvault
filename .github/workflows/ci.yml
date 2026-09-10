@@ -1,0 +1,51 @@
+name: CI — Validate & Check
+
+on:
+  push:
+    branches: [dev, main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  validate:
+    name: Validate files
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Check required files exist
+        run: |
+          echo "Checking required files..."
+          for f in index.html app.js styles.css admin.html; do
+            if [ -f "$f" ]; then
+              echo "  ✔ $f ($(wc -l < $f) lines, $(wc -c < $f | tr -d ' ') bytes)"
+            else
+              echo "  ✖ MISSING: $f"
+              exit 1
+            fi
+          done
+
+      - name: Check JS for syntax errors (Node)
+        run: |
+          echo "Checking app.js syntax..."
+          node --check app.js && echo "  ✔ app.js — no syntax errors"
+          node --check admin.js 2>/dev/null && echo "  ✔ admin.js — no syntax errors" || echo "  ⚠ admin.js not found or has issues"
+
+      - name: Check HTML structure
+        run: |
+          echo "Checking HTML..."
+          grep -q "StealthVault" index.html && echo "  ✔ index.html has StealthVault title"
+          grep -q "btn-stitch" index.html    && echo "  ✔ Encrypt button present"
+          grep -q "btn-unlock" index.html    && echo "  ✔ Unlock button present"
+          grep -q "vaultEncrypt" app.js      && echo "  ✔ vaultEncrypt function present"
+          grep -q "vaultReadMeta" app.js     && echo "  ✔ vaultReadMeta function present"
+          grep -q "AES-GCM" app.js           && echo "  ✔ AES-GCM encryption referenced"
+
+      - name: File size report
+        run: |
+          echo ""
+          echo "=== Build size report ==="
+          du -sh index.html app.js styles.css admin.html 2>/dev/null || true
+          echo "Total JS+CSS: $(cat app.js styles.css | wc -c | tr -d ' ') bytes"

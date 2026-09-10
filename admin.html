@@ -1,0 +1,801 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>StealthVault — Control Center</title>
+  <style>
+    :root {
+      --bg:#080c14; --surface:#0f1520; --surface2:#141c2a; --surface3:#1a2235;
+      --border:#1e2a3d; --border2:#263349;
+      --text:#e8edf5; --text2:#8899b0; --text3:#4a5a72;
+      --accent:#00a8ff; --accent2:#0066cc; --adim:rgba(0,168,255,0.08);
+      --success:#00e896; --error:#ff3a6e; --warn:#ffb020; --purple:#7c3aed;
+      --font:'Inter',system-ui,sans-serif; --mono:'JetBrains Mono','Fira Code',monospace;
+      --t:0.18s ease;
+    }
+    * { box-sizing:border-box; margin:0; padding:0; }
+    body { background:var(--bg); color:var(--text); font-family:var(--font); min-height:100vh; display:flex; }
+
+    /* ── Sidebar ── */
+    .sidebar {
+      width:220px; flex-shrink:0; background:var(--surface); border-right:1px solid var(--border);
+      display:flex; flex-direction:column; padding:24px 0; position:sticky; top:0; height:100vh; overflow-y:auto;
+    }
+    .sidebar-logo { padding:0 20px 24px; border-bottom:1px solid var(--border); margin-bottom:16px; }
+    .sidebar-logo .logo-name { font-size:14px; font-weight:800; letter-spacing:0.06em; color:var(--text); }
+    .sidebar-logo .logo-sub  { font-size:10px; color:var(--text3); margin-top:2px; letter-spacing:0.08em; text-transform:uppercase; }
+    .nav-section { padding:0 12px; margin-bottom:8px; }
+    .nav-section-title { font-size:9px; font-weight:700; letter-spacing:0.12em; color:var(--text3); text-transform:uppercase; padding:0 8px; margin-bottom:6px; }
+    .nav-item {
+      display:flex; align-items:center; gap:10px; padding:8px 10px; border-radius:8px;
+      cursor:pointer; font-size:13px; color:var(--text2); transition:all var(--t); text-decoration:none;
+      border:none; background:none; width:100%; text-align:left;
+    }
+    .nav-item:hover { background:var(--surface2); color:var(--text); }
+    .nav-item.active { background:var(--adim); color:var(--accent); border:1px solid var(--border2); }
+    .nav-item .nav-icon { font-size:15px; width:18px; text-align:center; flex-shrink:0; }
+    .sidebar-footer { margin-top:auto; padding:16px 20px; border-top:1px solid var(--border); }
+    .sidebar-footer a { font-size:11px; color:var(--text3); text-decoration:none; display:block; margin-bottom:6px; }
+    .sidebar-footer a:hover { color:var(--accent); }
+
+    /* ── Main content ── */
+    .main { flex:1; overflow-y:auto; }
+    .page { display:none; padding:32px; max-width:960px; }
+    .page.active { display:block; }
+
+    /* ── Page header ── */
+    .page-header { margin-bottom:32px; }
+    .page-header h1 { font-size:22px; font-weight:800; margin-bottom:6px; }
+    .page-header p  { font-size:13px; color:var(--text2); line-height:1.6; }
+
+    /* ── Cards ── */
+    .card { background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:24px; margin-bottom:20px; }
+    .card-title { font-size:13px; font-weight:700; margin-bottom:16px; display:flex; align-items:center; gap:8px; }
+    .card-title .badge { font-size:9px; padding:2px 8px; border-radius:10px; font-weight:700; letter-spacing:0.06em; text-transform:uppercase; }
+    .badge-live    { background:rgba(0,232,150,0.12); color:var(--success); border:1px solid rgba(0,232,150,0.25); }
+    .badge-staging { background:rgba(255,176,32,0.12); color:var(--warn); border:1px solid rgba(255,176,32,0.25); }
+    .badge-info    { background:var(--adim); color:var(--accent); border:1px solid var(--border2); }
+
+    /* ── Stats row ── */
+    .stats-row { display:grid; grid-template-columns:repeat(auto-fill,minmax(160px,1fr)); gap:14px; margin-bottom:20px; }
+    .stat-card {
+      background:var(--surface2); border:1px solid var(--border); border-radius:10px;
+      padding:16px 18px; display:flex; flex-direction:column; gap:4px;
+    }
+    .stat-value { font-size:24px; font-weight:800; font-family:var(--mono); color:var(--text); }
+    .stat-label { font-size:11px; color:var(--text2); font-weight:600; text-transform:uppercase; letter-spacing:0.06em; }
+
+    /* ── Settings grid ── */
+    .settings-grid { display:flex; flex-direction:column; gap:14px; }
+    .setting-row {
+      display:flex; align-items:center; justify-content:space-between; gap:14px;
+      padding:14px 16px; background:var(--surface2); border-radius:8px; border:1px solid var(--border);
+    }
+    .setting-info .setting-name { font-size:13px; font-weight:600; margin-bottom:3px; }
+    .setting-info .setting-desc { font-size:11px; color:var(--text2); }
+    .setting-control { flex-shrink:0; }
+    select.admin-select {
+      padding:7px 12px; border-radius:7px; border:1px solid var(--border2);
+      background:var(--surface3); color:var(--text); font-size:13px; cursor:pointer;
+      font-family:var(--mono); outline:none;
+    }
+    select.admin-select:focus { border-color:var(--accent2); }
+    .toggle-wrap { display:flex; align-items:center; gap:8px; font-size:12px; color:var(--text2); }
+    .toggle {
+      appearance:none; width:40px; height:22px; border-radius:11px;
+      background:var(--surface3); border:1px solid var(--border2); cursor:pointer;
+      position:relative; transition:all 0.2s; flex-shrink:0;
+    }
+    .toggle::after {
+      content:''; position:absolute; width:16px; height:16px; border-radius:50%;
+      background:var(--text2); top:2px; left:2px; transition:all 0.2s;
+    }
+    .toggle:checked { background:var(--accent2); border-color:var(--accent2); }
+    .toggle:checked::after { left:20px; background:#fff; }
+
+    /* ── Button styles ── */
+    .btn { padding:9px 18px; border-radius:8px; border:none; cursor:pointer; font-size:13px; font-weight:600; transition:all var(--t); font-family:var(--font); }
+    .btn-primary { background:var(--surface2); color:var(--text); border:1px solid var(--border2); }
+    .btn-primary:hover { border-color:var(--accent2); color:var(--accent); background:var(--adim); }
+    .btn-success { background:rgba(0,232,150,0.1); color:var(--success); border:1px solid rgba(0,232,150,0.3); }
+    .btn-success:hover { background:rgba(0,232,150,0.2); }
+    .btn-danger  { background:rgba(255,58,110,0.08); color:var(--error); border:1px solid rgba(255,58,110,0.2); }
+    .btn-danger:hover  { background:rgba(255,58,110,0.18); }
+    .btn-accent  { background:var(--accent2); color:#fff; }
+    .btn-accent:hover  { background:var(--accent); }
+    .btn-row { display:flex; gap:10px; flex-wrap:wrap; margin-top:16px; }
+
+    /* ── Release timeline ── */
+    .timeline { display:flex; flex-direction:column; gap:0; }
+    .timeline-item { display:flex; gap:16px; position:relative; padding-bottom:20px; }
+    .timeline-item:last-child { padding-bottom:0; }
+    .timeline-dot {
+      width:10px; height:10px; border-radius:50%; flex-shrink:0; margin-top:5px;
+      border:2px solid var(--border); background:var(--surface3);
+    }
+    .timeline-dot.live    { background:var(--success); border-color:var(--success); box-shadow:0 0 8px var(--success); }
+    .timeline-dot.staging { background:var(--warn); border-color:var(--warn); }
+    .timeline-line { position:absolute; left:4px; top:14px; bottom:0; width:2px; background:var(--border); }
+    .timeline-item:last-child .timeline-line { display:none; }
+    .timeline-content { flex:1; }
+    .timeline-tag { font-size:12px; font-weight:700; font-family:var(--mono); color:var(--text); }
+    .timeline-date { font-size:11px; color:var(--text3); margin-bottom:4px; }
+    .timeline-notes { font-size:12px; color:var(--text2); line-height:1.5; }
+
+    /* ── Workflow cards ── */
+    .workflow-card {
+      background:var(--surface2); border:1px solid var(--border); border-radius:10px;
+      padding:18px 20px; display:flex; align-items:center; gap:16px; margin-bottom:12px;
+    }
+    .workflow-icon { font-size:24px; flex-shrink:0; }
+    .workflow-info { flex:1; }
+    .workflow-info h3 { font-size:13px; font-weight:700; margin-bottom:4px; }
+    .workflow-info p  { font-size:12px; color:var(--text2); line-height:1.4; }
+    .workflow-status { font-size:11px; font-weight:700; padding:4px 10px; border-radius:6px; flex-shrink:0; }
+    .status-auto   { background:rgba(0,232,150,0.1); color:var(--success); }
+    .status-manual { background:rgba(255,176,32,0.1); color:var(--warn); }
+
+    /* ── Format docs ── */
+    .format-block {
+      background:var(--surface3); border:1px solid var(--border); border-radius:8px;
+      padding:16px 18px; font-family:var(--mono); font-size:12px; line-height:1.8;
+      color:var(--text2); overflow-x:auto;
+    }
+    .format-block .hl  { color:var(--accent); }
+    .format-block .ok  { color:var(--success); }
+    .format-block .dim { color:var(--text3); }
+
+    /* ── Table ── */
+    table { width:100%; border-collapse:collapse; font-size:13px; }
+    th { text-align:left; font-size:11px; text-transform:uppercase; letter-spacing:0.08em; color:var(--text3); padding:0 12px 10px; border-bottom:1px solid var(--border); }
+    td { padding:12px; border-bottom:1px solid var(--border); color:var(--text2); vertical-align:top; }
+    td:first-child { color:var(--text); font-weight:600; font-family:var(--mono); font-size:12px; }
+    tr:last-child td { border-bottom:none; }
+
+    /* ── Toast ── */
+    #toast { position:fixed; bottom:24px; right:24px; padding:12px 18px; border-radius:10px; font-size:13px; font-weight:600; opacity:0; transform:translateY(8px); transition:all 0.25s; pointer-events:none; z-index:999; }
+    #toast.show { opacity:1; transform:translateY(0); }
+    #toast.success { background:rgba(0,232,150,0.12); color:var(--success); border:1px solid rgba(0,232,150,0.3); }
+    #toast.error   { background:rgba(255,58,110,0.12); color:var(--error);   border:1px solid rgba(255,58,110,0.3); }
+
+    /* ── Responsive ── */
+    @media(max-width:680px) {
+      .sidebar { width:56px; }
+      .sidebar-logo, .nav-section-title, .nav-item span:not(.nav-icon), .sidebar-footer { display:none; }
+      .nav-item { justify-content:center; padding:10px; }
+      .page { padding:20px 16px; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- SIDEBAR -->
+<aside class="sidebar">
+  <div class="sidebar-logo">
+    <div class="logo-name">⚡ StealthVault</div>
+    <div class="logo-sub">Control Center</div>
+  </div>
+
+  <div class="nav-section">
+    <div class="nav-section-title">Overview</div>
+    <button class="nav-item active" data-page="dashboard">
+      <span class="nav-icon">📊</span><span>Dashboard</span>
+    </button>
+    <button class="nav-item" data-page="settings">
+      <span class="nav-icon">⚙️</span><span>App Settings</span>
+    </button>
+  </div>
+
+  <div class="nav-section" style="margin-top:8px;">
+    <div class="nav-section-title">Deployment</div>
+    <button class="nav-item" data-page="deploy">
+      <span class="nav-icon">🚀</span><span>Deploy / Release</span>
+    </button>
+    <button class="nav-item" data-page="branches">
+      <span class="nav-icon">🌿</span><span>Branches</span>
+    </button>
+  </div>
+
+  <div class="nav-section" style="margin-top:8px;">
+    <div class="nav-section-title">Reference</div>
+    <button class="nav-item" data-page="format">
+      <span class="nav-icon">📐</span><span>Vault Format</span>
+    </button>
+    <button class="nav-item" data-page="recovery">
+      <span class="nav-icon">🔑</span><span>Recovery Guide</span>
+    </button>
+  </div>
+
+  <div class="sidebar-footer">
+    <a href="index.html" target="_blank">↗ Open StealthVault</a>
+    <a href="https://github.com/Mohan454522/stealthvault" target="_blank">↗ GitHub Repo</a>
+    <a href="https://dash.cloudflare.com" target="_blank">↗ Cloudflare</a>
+  </div>
+</aside>
+
+<!-- MAIN -->
+<div class="main">
+
+  <!-- ─── DASHBOARD ─── -->
+  <div class="page active" id="page-dashboard">
+    <div class="page-header">
+      <h1>Dashboard</h1>
+      <p>StealthVault live status · App config · Quick actions</p>
+    </div>
+
+    <div class="stats-row">
+      <div class="stat-card">
+        <div class="stat-value" id="stat-version">v6</div>
+        <div class="stat-label">Vault Format</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value" id="stat-chunk">64 MB</div>
+        <div class="stat-label">Default Chunk</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value" id="stat-workers">auto</div>
+        <div class="stat-label">Workers</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value" id="stat-skip">10s</div>
+        <div class="stat-label">Skip Amount</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value" id="stat-preview">2 GB</div>
+        <div class="stat-label">Preview Limit</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value" id="stat-delay">5s</div>
+        <div class="stat-label">Auto-Next Delay</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">🌐 Deployments <span class="badge badge-live">Live</span></div>
+      <table>
+        <thead>
+          <tr><th>Environment</th><th>URL</th><th>Branch</th><th>Status</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Production</td>
+            <td><a href="https://vaults.codes" target="_blank" style="color:var(--accent)">vaults.codes</a></td>
+            <td><code>main</code></td>
+            <td style="color:var(--success)">● Live</td>
+          </tr>
+          <tr>
+            <td>Staging</td>
+            <td><a href="https://dev.vaults.codes" target="_blank" style="color:var(--accent)">dev.vaults.codes</a></td>
+            <td><code>dev</code></td>
+            <td style="color:var(--warn)">● Staging</td>
+          </tr>
+          <tr>
+            <td>GitHub</td>
+            <td><a href="https://github.com/Mohan454522/stealthvault" target="_blank" style="color:var(--accent)">Mohan454522/stealthvault</a></td>
+            <td><code>main, dev</code></td>
+            <td style="color:var(--success)">● Public</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="card">
+      <div class="card-title">⚡ Quick Actions</div>
+      <div class="btn-row" style="margin-top:0;">
+        <button class="btn btn-primary" onclick="window.open('https://github.com/Mohan454522/stealthvault/actions','_blank')">🤖 GitHub Actions</button>
+        <button class="btn btn-primary" onclick="window.open('https://dash.cloudflare.com','_blank')">☁️ Cloudflare Pages</button>
+        <button class="btn btn-primary" onclick="window.open('index.html','_blank')">🔒 Open App</button>
+        <button class="btn btn-danger"  onclick="clearAllConfig()">🗑️ Reset App Config</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">📋 How Production Releases Work</div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:14px;">
+        <div style="background:var(--surface2);border-radius:8px;padding:14px;">
+          <div style="font-size:20px;margin-bottom:8px;">1️⃣</div>
+          <div style="font-weight:700;font-size:13px;margin-bottom:4px;">Code on dev branch</div>
+          <div style="font-size:12px;color:var(--text2);">All new features go to dev. This deploys to dev.vaults.codes automatically.</div>
+        </div>
+        <div style="background:var(--surface2);border-radius:8px;padding:14px;">
+          <div style="font-size:20px;margin-bottom:8px;">2️⃣</div>
+          <div style="font-weight:700;font-size:13px;margin-bottom:4px;">Test on staging</div>
+          <div style="font-size:12px;color:var(--text2);">Open dev.vaults.codes, test every feature, confirm everything works.</div>
+        </div>
+        <div style="background:var(--surface2);border-radius:8px;padding:14px;">
+          <div style="font-size:20px;margin-bottom:8px;">3️⃣</div>
+          <div style="font-weight:700;font-size:13px;margin-bottom:4px;">Run Promote workflow</div>
+          <div style="font-size:12px;color:var(--text2);">GitHub Actions → promote.yml → fill version + notes → Run. dev merges into main.</div>
+        </div>
+        <div style="background:var(--surface2);border-radius:8px;padding:14px;">
+          <div style="font-size:20px;margin-bottom:8px;">4️⃣</div>
+          <div style="font-weight:700;font-size:13px;margin-bottom:4px;">Auto deploy to vaults.codes</div>
+          <div style="font-size:12px;color:var(--text2);">Cloudflare Pages sees the push to main, deploys within ~30 seconds. Done.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ─── APP SETTINGS ─── -->
+  <div class="page" id="page-settings">
+    <div class="page-header">
+      <h1>App Settings</h1>
+      <p>These are synced to localStorage on the same domain. Changing them here changes them in StealthVault too.</p>
+    </div>
+
+    <div class="card">
+      <div class="card-title">🔧 Encryption Defaults</div>
+      <div class="settings-grid">
+        <div class="setting-row">
+          <div class="setting-info">
+            <div class="setting-name">Default Chunk Size</div>
+            <div class="setting-desc">Larger = faster for big files but uses more RAM. Old vaults auto-detect their own chunk size.</div>
+          </div>
+          <div class="setting-control">
+            <select class="admin-select" id="set-chunk">
+              <option value="16">16 MB</option>
+              <option value="32">32 MB</option>
+              <option value="64" selected>64 MB (default)</option>
+              <option value="128">128 MB</option>
+              <option value="256">256 MB</option>
+            </select>
+          </div>
+        </div>
+        <div class="setting-row">
+          <div class="setting-info">
+            <div class="setting-name">Worker Count</div>
+            <div class="setting-desc">Parallel crypto workers. 0 = auto (match CPU cores). More workers = faster on multi-core.</div>
+          </div>
+          <div class="setting-control">
+            <select class="admin-select" id="set-workers">
+              <option value="0">Auto</option>
+              <option value="2">2</option>
+              <option value="4">4</option>
+              <option value="8">8</option>
+              <option value="16">16</option>
+            </select>
+          </div>
+        </div>
+        <div class="setting-row">
+          <div class="setting-info">
+            <div class="setting-name">Preview Size Limit</div>
+            <div class="setting-desc">Files larger than this show "Too large to preview" and require export.</div>
+          </div>
+          <div class="setting-control">
+            <select class="admin-select" id="set-preview">
+              <option value="512">512 MB</option>
+              <option value="1024">1 GB</option>
+              <option value="2048" selected>2 GB (default)</option>
+              <option value="4096">4 GB</option>
+              <option value="8192">8 GB</option>
+            </select>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">🎬 Viewer Settings</div>
+      <div class="settings-grid">
+        <div class="setting-row">
+          <div class="setting-info">
+            <div class="setting-name">Skip Amount</div>
+            <div class="setting-desc">How many seconds to skip forward/backward in videos/audio.</div>
+          </div>
+          <div class="setting-control">
+            <select class="admin-select" id="set-skip">
+              <option value="5">5s</option>
+              <option value="10" selected>10s (default)</option>
+              <option value="15">15s</option>
+              <option value="30">30s</option>
+            </select>
+          </div>
+        </div>
+        <div class="setting-row">
+          <div class="setting-info">
+            <div class="setting-name">Auto-Play Next</div>
+            <div class="setting-desc">Automatically play the next video/audio file when current one ends.</div>
+          </div>
+          <div class="setting-control">
+            <div class="toggle-wrap">
+              <span>Off</span>
+              <input type="checkbox" class="toggle" id="set-autoplay" checked />
+              <span>On</span>
+            </div>
+          </div>
+        </div>
+        <div class="setting-row">
+          <div class="setting-info">
+            <div class="setting-name">Auto-Next Delay</div>
+            <div class="setting-desc">Countdown seconds before automatically going to next file.</div>
+          </div>
+          <div class="setting-control">
+            <select class="admin-select" id="set-delay">
+              <option value="3">3s</option>
+              <option value="5" selected>5s (default)</option>
+              <option value="10">10s</option>
+            </select>
+          </div>
+        </div>
+        <div class="setting-row">
+          <div class="setting-info">
+            <div class="setting-name">Prefetch Ahead</div>
+            <div class="setting-desc">How many files ahead to pre-decrypt in the background.</div>
+          </div>
+          <div class="setting-control">
+            <select class="admin-select" id="set-prefetch">
+              <option value="1">1</option>
+              <option value="2" selected>2 (default)</option>
+              <option value="3">3</option>
+              <option value="5">5</option>
+            </select>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="btn-row">
+      <button class="btn btn-success" onclick="saveSettings()">💾 Save to App</button>
+      <button class="btn btn-danger"  onclick="resetSettings()">↩ Reset Defaults</button>
+    </div>
+    <p id="settings-save-msg" style="margin-top:12px;font-size:12px;color:var(--success);display:none;">✔ Settings saved — reload StealthVault to apply</p>
+  </div>
+
+  <!-- ─── DEPLOY / RELEASE ─── -->
+  <div class="page" id="page-deploy">
+    <div class="page-header">
+      <h1>Deploy / Release</h1>
+      <p>How to get code from dev to production. No terminal needed once you set this up.</p>
+    </div>
+
+    <div class="card">
+      <div class="card-title">🤖 Automated Workflows</div>
+      <div class="workflow-card">
+        <div class="workflow-icon">✅</div>
+        <div class="workflow-info">
+          <h3>CI — Validate on every push</h3>
+          <p>Runs automatically when you push to <code>dev</code> or <code>main</code>. Checks file existence, JS syntax, critical functions. Takes ~10 seconds.</p>
+        </div>
+        <div class="workflow-status status-auto">Auto</div>
+      </div>
+      <div class="workflow-card">
+        <div class="workflow-icon">🚀</div>
+        <div class="workflow-info">
+          <h3>Promote dev → main (Release)</h3>
+          <p>Manually triggered. You fill in the version number and release notes, choose dry_run=no, and it merges dev into main + creates a GitHub Release. Cloudflare then auto-deploys to vaults.codes.</p>
+        </div>
+        <div class="workflow-status status-manual">Manual</div>
+      </div>
+      <div class="workflow-card">
+        <div class="workflow-icon">☁️</div>
+        <div class="workflow-info">
+          <h3>Cloudflare Pages — Auto deploy</h3>
+          <p>Every push to <code>dev</code> → dev.vaults.codes (within 30s). Every push to <code>main</code> → vaults.codes (within 30s). No action required.</p>
+        </div>
+        <div class="workflow-status status-auto">Auto</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">📋 Step-by-step: Release to Production</div>
+      <div style="font-size:13px;line-height:1.9;color:var(--text2);">
+        <div style="display:grid;gap:12px;">
+          <div style="background:var(--surface2);border-radius:8px;padding:14px 16px;">
+            <strong style="color:var(--text);">Step 1:</strong> Push your code to dev (I do this for you automatically after each session)
+            <br><code style="color:var(--accent);font-family:var(--mono);font-size:12px;">git push origin dev</code>
+          </div>
+          <div style="background:var(--surface2);border-radius:8px;padding:14px 16px;">
+            <strong style="color:var(--text);">Step 2:</strong> Test on staging at
+            <a href="https://dev.vaults.codes" target="_blank" style="color:var(--accent);">dev.vaults.codes</a>
+            — encrypt a file, open it, test every button
+          </div>
+          <div style="background:var(--surface2);border-radius:8px;padding:14px 16px;">
+            <strong style="color:var(--text);">Step 3:</strong> Go to
+            <a href="https://github.com/Mohan454522/stealthvault/actions/workflows/promote.yml" target="_blank" style="color:var(--accent);">GitHub Actions → promote.yml → Run workflow</a>
+            <br>Fill in: version (e.g. v1.2.0), release notes, dry_run=<strong>no</strong>
+          </div>
+          <div style="background:var(--surface2);border-radius:8px;padding:14px 16px;">
+            <strong style="color:var(--text);">Step 4:</strong> Wait 30 seconds →
+            <a href="https://vaults.codes" target="_blank" style="color:var(--accent);">vaults.codes</a>
+            is updated. Done ✔
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">🏢 How Real Companies Do This</div>
+      <table>
+        <thead><tr><th>What</th><th>How companies do it</th><th>StealthVault version</th></tr></thead>
+        <tbody>
+          <tr><td>Branches</td><td>main (prod), staging, feature/* branches</td><td>main + dev</td></tr>
+          <tr><td>Code review</td><td>Pull Request reviewed by 2 engineers before merge</td><td>You are the engineer — just test on staging</td></tr>
+          <tr><td>CI</td><td>Lint, unit tests, integration tests, build, security scan</td><td>File check + JS syntax check</td></tr>
+          <tr><td>Deploy</td><td>Jenkins/GitLab CI/AWS CodeDeploy builds Docker, pushes to Kubernetes</td><td>Cloudflare Pages (zero config, free)</td></tr>
+          <tr><td>Versioning</td><td>Semantic versioning: v1.0.0, v1.1.0, v2.0.0</td><td>Same — tracked in GitHub Releases</td></tr>
+          <tr><td>Rollback</td><td>Re-deploy previous container image</td><td>Cloudflare Pages → Deployments → click previous build → Rollback</td></tr>
+          <tr><td>Monitoring</td><td>Datadog, Sentry, PagerDuty</td><td>Cloudflare Analytics (free, auto)</td></tr>
+          <tr><td>Secrets</td><td>AWS Secrets Manager, Vault by HashiCorp</td><td>No server = no secrets needed</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ─── BRANCHES ─── -->
+  <div class="page" id="page-branches">
+    <div class="page-header">
+      <h1>Branches &amp; Git Workflow</h1>
+      <p>How StealthVault is structured in git and what each branch means.</p>
+    </div>
+
+    <div class="card">
+      <div class="card-title">🌿 Branch Map</div>
+      <div class="timeline">
+        <div class="timeline-item">
+          <div style="position:relative;">
+            <div class="timeline-dot live"></div>
+            <div class="timeline-line"></div>
+          </div>
+          <div class="timeline-content">
+            <div class="timeline-tag">main <span class="badge badge-live" style="margin-left:8px;">PRODUCTION</span></div>
+            <div class="timeline-date">→ vaults.codes</div>
+            <div class="timeline-notes">Only updated by the promote workflow. Never push directly. Protected.</div>
+          </div>
+        </div>
+        <div class="timeline-item">
+          <div style="position:relative;">
+            <div class="timeline-dot staging"></div>
+            <div class="timeline-line"></div>
+          </div>
+          <div class="timeline-content">
+            <div class="timeline-tag">dev <span class="badge badge-staging" style="margin-left:8px;">STAGING</span></div>
+            <div class="timeline-date">→ dev.vaults.codes</div>
+            <div class="timeline-notes">This is where all development happens. Push here after every feature or fix. I push here automatically.</div>
+          </div>
+        </div>
+        <div class="timeline-item">
+          <div style="position:relative;">
+            <div class="timeline-dot"></div>
+          </div>
+          <div class="timeline-content">
+            <div class="timeline-tag">feature/xxx <span class="badge badge-info" style="margin-left:8px;">OPTIONAL</span></div>
+            <div class="timeline-date">→ no auto deploy</div>
+            <div class="timeline-notes">For big experimental features. Branch off dev, develop, merge back into dev when done. Not required for small changes.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">📦 Versioning (how to name releases)</div>
+      <table>
+        <thead><tr><th>Version</th><th>When to use</th><th>Examples</th></tr></thead>
+        <tbody>
+          <tr><td>v1.0.0 → v1.0.1</td><td>Patch — bug fix only</td><td>Fix progress bar sticking, fix crash on large files</td></tr>
+          <tr><td>v1.0.0 → v1.1.0</td><td>Minor — new feature, backward compatible</td><td>Add gallery type filter, add swipe gestures</td></tr>
+          <tr><td>v1.0.0 → v2.0.0</td><td>Major — breaking change</td><td>Vault format change, encryption algorithm change</td></tr>
+        </tbody>
+      </table>
+      <div style="margin-top:14px;font-size:12px;color:var(--text2);">
+        ⚠ StealthVault vault format changed in v6. All files encrypted with v6 format (MAGIC bytes <code style="color:var(--accent)">53564C540006</code>) are always compatible.
+      </div>
+    </div>
+  </div>
+
+  <!-- ─── VAULT FORMAT ─── -->
+  <div class="page" id="page-format">
+    <div class="page-header">
+      <h1>Vault Format v6</h1>
+      <p>Complete specification of the StealthVault v6 binary format. Use this to manually recover files if the app is ever unavailable.</p>
+    </div>
+
+    <div class="card">
+      <div class="card-title">📐 Binary Layout</div>
+      <div class="format-block">
+<span class="dim">┌─────────────────────────────────────────────────────┐</span>
+<span class="dim">│</span>  <span class="ok">COVER IMAGE BYTES</span>        <span class="dim">← arbitrary length (any JPEG)</span>
+<span class="dim">├─────────────────────────────────────────────────────┤</span>
+<span class="dim">│</span>  <span class="hl">PAYLOAD HEADER:</span>
+<span class="dim">│</span>    MAGIC       [8 bytes]  <span class="dim">= 53 56 4C 54 00 06 00 00</span>
+<span class="dim">│</span>    SALT        [16 bytes] <span class="dim">= random, per-file</span>
+<span class="dim">│</span>    CHUNK_SIZE  [4 bytes]  <span class="dim">= uint32 LE ← stored at encrypt time</span>
+<span class="dim">│</span>    FILE_COUNT  [4 bytes]  <span class="dim">= uint32 LE</span>
+<span class="dim">│</span>    For each file:
+<span class="dim">│</span>      META_ENC_LEN [4 bytes]  <span class="dim">= uint32 LE</span>
+<span class="dim">│</span>      META_ENC     [N bytes]  <span class="dim">= AES-GCM(IV[12] + JSON + tag[16])</span>
+<span class="dim">│</span>        <span class="dim">JSON = { name, size, mime, nChunks, chunkSz }</span>
+<span class="dim">├─────────────────────────────────────────────────────┤</span>
+<span class="dim">│</span>  <span class="hl">PAYLOAD DATA:</span>
+<span class="dim">│</span>    For each file, for each chunk:
+<span class="dim">│</span>      CHUNK_ENC_LEN [4 bytes]  <span class="dim">= uint32 LE</span>
+<span class="dim">│</span>      CHUNK_ENC     [N bytes]  <span class="dim">= AES-GCM(IV[12] + data + tag[16])</span>
+<span class="dim">├─────────────────────────────────────────────────────┤</span>
+<span class="dim">│</span>  <span class="hl">TRAILER</span> <span class="dim">(last 20 bytes, always at end of file):</span>
+<span class="dim">│</span>    COVER_SIZE  [8 bytes]  <span class="dim">= uint64 LE (bytes of cover image)</span>
+<span class="dim">│</span>    HEADER_SIZE [4 bytes]  <span class="dim">= uint32 LE (bytes of payload header)</span>
+<span class="dim">│</span>    END_MARKER  [8 bytes]  <span class="dim">= DE AD 56 36 00 00 DE AD</span>
+<span class="dim">└─────────────────────────────────────────────────────┘</span>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">🔐 Key Derivation</div>
+      <table>
+        <thead><tr><th>Parameter</th><th>Value</th></tr></thead>
+        <tbody>
+          <tr><td>Algorithm</td><td>PBKDF2-SHA-256</td></tr>
+          <tr><td>Iterations</td><td>310,000 rounds</td></tr>
+          <tr><td>Salt</td><td>16 bytes random per vault file</td></tr>
+          <tr><td>Output</td><td>256-bit AES key</td></tr>
+          <tr><td>Encryption</td><td>AES-256-GCM (authenticated)</td></tr>
+          <tr><td>IV per chunk</td><td>12 bytes random</td></tr>
+          <tr><td>Auth tag</td><td>16 bytes (included in CHUNK_ENC)</td></tr>
+          <tr><td>Standard</td><td>Web Crypto API (SubtleCrypto) — browser-native, no dependencies</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="card">
+      <div class="card-title">🔍 How to identify a vault file</div>
+      <div style="font-size:13px;color:var(--text2);line-height:1.7;">
+        <p>The file looks like a normal JPEG. To verify it's a StealthVault v6 file:</p>
+        <ol style="margin:12px 0 0 18px;display:flex;flex-direction:column;gap:8px;">
+          <li>Open the file in a hex editor</li>
+          <li>Read the last 8 bytes → must be <code style="color:var(--accent)">DE AD 56 36 00 00 DE AD</code></li>
+          <li>Read bytes at <code>[fileSize - 20]</code> for 8 bytes → COVER_SIZE</li>
+          <li>Read bytes at <code>[fileSize - 12]</code> for 4 bytes → HEADER_SIZE</li>
+          <li>Jump to <code>[COVER_SIZE]</code> and read 8 bytes → must be <code style="color:var(--accent)">53 56 4C 54 00 06 00 00</code></li>
+        </ol>
+        <p style="margin-top:12px;">If all checks pass: it's a StealthVault v6 file. The cover image is bytes 0 to COVER_SIZE-1.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ─── RECOVERY ─── -->
+  <div class="page" id="page-recovery">
+    <div class="page-header">
+      <h1>Recovery Guide</h1>
+      <p>How to recover your files even if StealthVault.codes is down and you only have your vault images.</p>
+    </div>
+
+    <div class="card" style="border-color:rgba(255,176,32,0.3);">
+      <div class="card-title">⚠️ What you need to decrypt a vault</div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px;margin-top:4px;">
+        <div style="background:rgba(0,232,150,0.06);border:1px solid rgba(0,232,150,0.2);border-radius:8px;padding:14px;">
+          <div style="font-size:18px;margin-bottom:6px;">🖼️</div>
+          <div style="font-weight:700;font-size:13px;margin-bottom:4px;">The vault image file(s)</div>
+          <div style="font-size:12px;color:var(--text2);">The JPEG/PNG images you encrypted. Without these, nothing can be done.</div>
+        </div>
+        <div style="background:rgba(0,232,150,0.06);border:1px solid rgba(0,232,150,0.2);border-radius:8px;padding:14px;">
+          <div style="font-size:18px;margin-bottom:6px;">🔑</div>
+          <div style="font-weight:700;font-size:13px;margin-bottom:4px;">Your passphrase</div>
+          <div style="font-size:12px;color:var(--text2);">The password you used at encryption time. Cannot be reset or recovered.</div>
+        </div>
+        <div style="background:rgba(0,168,255,0.06);border:1px solid rgba(0,168,255,0.2);border-radius:8px;padding:14px;">
+          <div style="font-size:18px;margin-bottom:6px;">🌐</div>
+          <div style="font-weight:700;font-size:13px;margin-bottom:4px;">A web browser</div>
+          <div style="font-size:12px;color:var(--text2);">Chrome 89+, Edge 89+, Firefox 90+, Safari 15+. No internet needed if you have the files.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">🆘 If vaults.codes is down</div>
+      <div style="font-size:13px;color:var(--text2);line-height:1.8;">
+        <strong style="color:var(--text);">Option 1 — Use the GitHub source directly:</strong>
+        <div style="background:var(--surface2);border-radius:8px;padding:12px 14px;margin:8px 0;font-family:var(--mono);font-size:12px;color:var(--accent);">
+          Download from: github.com/Mohan454522/stealthvault<br>
+          → Download ZIP → Extract → Open index.html in browser
+        </div>
+        <strong style="color:var(--text);">Option 2 — Cloudflare Pages backup URL:</strong>
+        <div style="background:var(--surface2);border-radius:8px;padding:12px 14px;margin:8px 0;font-family:var(--mono);font-size:12px;color:var(--accent);">
+          stealthvault-[hash].pages.dev (check Cloudflare dashboard for the exact URL)
+        </div>
+        <strong style="color:var(--text);">Option 3 — Run locally:</strong>
+        <div style="background:var(--surface2);border-radius:8px;padding:12px 14px;margin:8px 0;font-family:var(--mono);font-size:12px;color:var(--text2);">
+          Open index.html directly in Chrome/Edge. File:// URLs work fine.
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">📌 What to save (keep this somewhere safe)</div>
+      <div style="background:var(--surface2);border:1px solid var(--warn);border-radius:8px;padding:16px;font-size:13px;color:var(--text2);line-height:1.8;">
+        Save this in a note app, printed paper, or USB drive:
+        <ol style="margin:10px 0 0 18px;display:flex;flex-direction:column;gap:6px;">
+          <li>Your vault images (the encrypted JPEG files)</li>
+          <li>Your passphrase(s) — written down or in a password manager</li>
+          <li>This URL: <strong style="color:var(--accent);">github.com/Mohan454522/stealthvault</strong></li>
+          <li>Note: "Open index.html in Chrome. File picker → select vault image → enter passphrase → Unlock."</li>
+        </ol>
+        <div style="margin-top:14px;font-size:12px;color:var(--warn);">
+          ⚠ The encryption key is derived ONLY from your passphrase + the salt stored in the file. There is no recovery key, no backdoor, no server. If you forget your passphrase, the files are gone.
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /main -->
+
+<div id="toast"></div>
+
+<script>
+  // ── Navigation ──
+  document.querySelectorAll('.nav-item[data-page]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+      btn.classList.add('active');
+      document.getElementById('page-' + btn.dataset.page).classList.add('active');
+    });
+  });
+
+  // ── localStorage CONFIG key (same as app.js) ──
+  const CONFIG_KEY = 'sv-config-v1';
+  const DEFAULTS = { chunkSizeMB:64, workerCount:0, skipSeconds:10, autoPlayNext:true, autoPlayDelay:5, prefetchAhead:2, previewLimitMB:2048 };
+
+  function loadCfg() {
+    try { return { ...DEFAULTS, ...JSON.parse(localStorage.getItem(CONFIG_KEY) || '{}') }; }
+    catch { return { ...DEFAULTS }; }
+  }
+  function saveCfg(cfg) { localStorage.setItem(CONFIG_KEY, JSON.stringify(cfg)); }
+
+  function syncUI() {
+    const c = loadCfg();
+    // Dashboard stats
+    document.getElementById('stat-chunk').textContent   = c.chunkSizeMB + ' MB';
+    document.getElementById('stat-workers').textContent = c.workerCount === 0 ? 'auto' : c.workerCount;
+    document.getElementById('stat-skip').textContent    = c.skipSeconds + 's';
+    document.getElementById('stat-preview').textContent = c.previewLimitMB >= 1024 ? (c.previewLimitMB/1024) + ' GB' : c.previewLimitMB + ' MB';
+    document.getElementById('stat-delay').textContent   = c.autoPlayDelay + 's';
+    // Settings selects
+    document.getElementById('set-chunk').value    = c.chunkSizeMB;
+    document.getElementById('set-workers').value  = c.workerCount;
+    document.getElementById('set-skip').value     = c.skipSeconds;
+    document.getElementById('set-autoplay').checked = c.autoPlayNext;
+    document.getElementById('set-delay').value    = c.autoPlayDelay;
+    document.getElementById('set-preview').value  = c.previewLimitMB;
+  }
+
+  function saveSettings() {
+    const cfg = loadCfg();
+    cfg.chunkSizeMB    = Number(document.getElementById('set-chunk').value);
+    cfg.workerCount    = Number(document.getElementById('set-workers').value);
+    cfg.skipSeconds    = Number(document.getElementById('set-skip').value);
+    cfg.autoPlayNext   = document.getElementById('set-autoplay').checked;
+    cfg.autoPlayDelay  = Number(document.getElementById('set-delay').value);
+    cfg.previewLimitMB = Number(document.getElementById('set-preview').value);
+    saveCfg(cfg);
+    syncUI();
+    document.getElementById('settings-save-msg').style.display = 'block';
+    toast('✔ Settings saved to app!', 'success');
+  }
+
+  function resetSettings() {
+    saveCfg({ ...DEFAULTS });
+    syncUI();
+    toast('↩ Settings reset to defaults', 'success');
+  }
+
+  function clearAllConfig() {
+    if (!confirm('Clear all StealthVault settings from this browser? (vaults will NOT be affected)')) return;
+    localStorage.removeItem(CONFIG_KEY);
+    localStorage.removeItem('sv-last-tab');
+    syncUI();
+    toast('🗑 Config cleared', 'success');
+  }
+
+  // ── Toast ──
+  let _toastTimer;
+  function toast(msg, type='success') {
+    const el = document.getElementById('toast');
+    el.textContent = msg; el.className = `show ${type}`;
+    clearTimeout(_toastTimer);
+    _toastTimer = setTimeout(() => el.classList.remove('show'), 3000);
+  }
+
+  syncUI();
+</script>
+</body>
+</html>
