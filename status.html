@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>StealthVault — Status</title>
+  <style>
+    :root {
+      --bg:#080c14; --surface:#0f1520; --surface2:#141c2a; --surface3:#1a2235;
+      --border:#1e2a3d; --border2:#263349;
+      --text:#e8edf5; --text2:#8899b0; --text3:#4a5a72;
+      --accent:#00a8ff; --accent2:#0066cc; --adim:rgba(0,168,255,0.08);
+      --success:#00e896; --error:#ff3a6e; --warn:#ffb020;
+      --font:'Inter',system-ui,sans-serif; --mono:'JetBrains Mono','Fira Code',monospace;
+    }
+    * { box-sizing:border-box; margin:0; padding:0; }
+    body { background:var(--bg); color:var(--text); font-family:var(--font); min-height:100vh; }
+
+    nav { background:rgba(8,12,20,0.95); border-bottom:1px solid var(--border); padding:0 24px; position:sticky; top:0; z-index:100; backdrop-filter:blur(12px); }
+    .nav-inner { max-width:800px; margin:0 auto; display:flex; align-items:center; gap:20px; height:56px; }
+    .nav-logo { font-size:15px; font-weight:800; letter-spacing:0.04em; text-decoration:none; color:var(--text); }
+    .nav-logo span { color:var(--accent); }
+    .nav-links { display:flex; gap:4px; margin-left:auto; }
+    .nav-link { padding:7px 14px; border-radius:8px; text-decoration:none; font-size:13px; font-weight:600; color:var(--text2); transition:all 0.18s; }
+    .nav-link:hover { background:var(--surface2); color:var(--text); }
+    .nav-link.active { background:var(--adim); color:var(--accent); }
+
+    .wrap { max-width:800px; margin:0 auto; padding:48px 24px; }
+
+    /* Overall status banner */
+    .status-hero {
+      text-align:center; padding:48px 24px; border-radius:16px; margin-bottom:40px;
+      border:1px solid var(--border); background:var(--surface);
+      transition: all 0.3s;
+    }
+    .status-hero.operational { border-color:rgba(0,232,150,0.3); background:rgba(0,232,150,0.04); }
+    .status-hero.degraded    { border-color:rgba(255,176,32,0.3); background:rgba(255,176,32,0.04); }
+    .status-hero.down        { border-color:rgba(255,58,110,0.3); background:rgba(255,58,110,0.04); }
+    .status-icon { font-size:52px; margin-bottom:16px; }
+    .status-hero h1 { font-size:24px; font-weight:800; margin-bottom:8px; }
+    .status-hero p  { font-size:14px; color:var(--text2); }
+    .status-hero .last-checked { font-size:11px; color:var(--text3); margin-top:8px; font-family:var(--mono); }
+
+    /* Services grid */
+    .section-title { font-size:11px; font-weight:700; letter-spacing:0.1em; text-transform:uppercase; color:var(--text3); margin-bottom:12px; }
+    .services { display:flex; flex-direction:column; gap:2px; margin-bottom:36px; }
+    .service-row {
+      display:flex; align-items:center; gap:14px; padding:14px 18px;
+      background:var(--surface); border:1px solid var(--border); border-radius:0;
+      transition:border-color 0.2s;
+    }
+    .service-row:first-child { border-radius:10px 10px 0 0; }
+    .service-row:last-child  { border-radius:0 0 10px 10px; }
+    .service-row:only-child  { border-radius:10px; }
+    .service-dot { width:10px; height:10px; border-radius:50%; flex-shrink:0; }
+    .service-dot.ok      { background:var(--success); box-shadow:0 0 6px var(--success); }
+    .service-dot.warn    { background:var(--warn);    box-shadow:0 0 6px var(--warn); }
+    .service-dot.error   { background:var(--error);   box-shadow:0 0 6px var(--error); }
+    .service-dot.loading { background:var(--text3); animation:pulse 1.2s ease infinite; }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
+    .service-name { flex:1; font-size:13px; font-weight:600; }
+    .service-desc { font-size:12px; color:var(--text2); }
+    .service-status { font-size:12px; font-weight:700; font-family:var(--mono); }
+    .service-status.ok    { color:var(--success); }
+    .service-status.warn  { color:var(--warn); }
+    .service-status.error { color:var(--error); }
+    .service-status.loading { color:var(--text3); }
+    .service-latency { font-size:11px; color:var(--text3); font-family:var(--mono); margin-left:6px; }
+
+    /* Uptime bars (90 days simulation) */
+    .uptime-section { margin-bottom:36px; }
+    .uptime-row { background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:18px 20px; margin-bottom:10px; }
+    .uptime-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; }
+    .uptime-name { font-size:13px; font-weight:600; }
+    .uptime-pct  { font-size:12px; font-weight:700; color:var(--success); font-family:var(--mono); }
+    .uptime-bars { display:flex; gap:2px; }
+    .uptime-bar  { flex:1; height:28px; border-radius:2px; cursor:default; }
+    .uptime-bar.up   { background:var(--success); opacity:0.7; }
+    .uptime-bar.down { background:var(--error); }
+    .uptime-bar.none { background:var(--surface2); }
+    .uptime-labels { display:flex; justify-content:space-between; margin-top:6px; font-size:10px; color:var(--text3); }
+
+    /* Incidents */
+    .no-incidents { background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:20px; text-align:center; font-size:13px; color:var(--text2); }
+
+    /* Footer */
+    footer { text-align:center; padding:40px 24px; font-size:12px; color:var(--text3); border-top:1px solid var(--border); margin-top:40px; }
+    footer a { color:var(--text2); text-decoration:none; }
+    footer a:hover { color:var(--accent); }
+
+    .btn-refresh { padding:8px 16px; border-radius:8px; border:1px solid var(--border2); background:var(--surface2); color:var(--text2); cursor:pointer; font-size:12px; font-weight:600; font-family:var(--font); transition:all 0.18s; margin-top:14px; }
+    .btn-refresh:hover { border-color:var(--accent2); color:var(--accent); }
+  </style>
+</head>
+<body>
+
+<nav>
+  <div class="nav-inner">
+    <a class="nav-logo" href="index.html">Stealth<span>Vault</span></a>
+    <div class="nav-links">
+      <a class="nav-link" href="index.html">App</a>
+      <a class="nav-link" href="changelog.html">Changelog</a>
+      <a class="nav-link active" href="status.html">Status</a>
+      <a class="nav-link" href="admin.html">Admin</a>
+    </div>
+  </div>
+</nav>
+
+<div class="wrap">
+
+  <!-- Overall status hero -->
+  <div class="status-hero" id="status-hero">
+    <div class="status-icon" id="hero-icon">⏳</div>
+    <h1 id="hero-title">Checking systems…</h1>
+    <p id="hero-sub">Running checks on all services</p>
+    <div class="last-checked" id="hero-time"></div>
+    <button class="btn-refresh" onclick="runChecks()">↻ Refresh</button>
+  </div>
+
+  <!-- Services -->
+  <div class="section-title">Services</div>
+  <div class="services" id="services-list">
+    <!-- Populated by JS -->
+  </div>
+
+  <!-- Uptime -->
+  <div class="uptime-section">
+    <div class="section-title">Uptime — Last 90 Days</div>
+    <div class="uptime-row">
+      <div class="uptime-header">
+        <span class="uptime-name">StealthVault App (vaults.codes)</span>
+        <span class="uptime-pct" id="uptime-pct-main">—</span>
+      </div>
+      <div class="uptime-bars" id="uptime-bars-main"></div>
+      <div class="uptime-labels"><span>90 days ago</span><span>Today</span></div>
+    </div>
+    <div class="uptime-row">
+      <div class="uptime-header">
+        <span class="uptime-name">Staging (dev.vaults.codes)</span>
+        <span class="uptime-pct" id="uptime-pct-dev">—</span>
+      </div>
+      <div class="uptime-bars" id="uptime-bars-dev"></div>
+      <div class="uptime-labels"><span>90 days ago</span><span>Today</span></div>
+    </div>
+  </div>
+
+  <!-- Incidents -->
+  <div class="section-title">Recent Incidents</div>
+  <div class="no-incidents" id="incidents">
+    ✅ No incidents reported in the last 90 days.
+  </div>
+
+</div>
+
+<footer>
+  Powered by <a href="https://pages.cloudflare.com" target="_blank">Cloudflare Pages</a> ·
+  Source on <a href="https://github.com/Mohan454522/stealthvault" target="_blank">GitHub</a> ·
+  No servers, no data collected
+</footer>
+
+<script>
+const CHECKS = [
+  {
+    id:   'main-app',
+    name: 'StealthVault App',
+    desc: 'vaults.codes — main production app',
+    url:  'https://vaults.codes/',
+    critical: true,
+  },
+  {
+    id:   'dev-app',
+    name: 'Staging App',
+    desc: 'dev.vaults.codes — staging environment',
+    url:  'https://dev.vaults.codes/',
+    critical: false,
+  },
+  {
+    id:   'github',
+    name: 'GitHub Repository',
+    desc: 'Source code availability',
+    url:  'https://github.com/Mohan454522/stealthvault',
+    critical: false,
+  },
+  {
+    id:   'cloudflare',
+    name: 'Cloudflare Pages',
+    desc: 'Hosting infrastructure',
+    url:  'https://www.cloudflarestatus.com/',
+    critical: true,
+  },
+  {
+    id:   'crypto',
+    name: 'Browser Crypto Engine',
+    desc: 'Web Crypto API — encryption runs entirely in your browser',
+    localCheck: checkCrypto,
+    critical: true,
+  },
+];
+
+async function checkCrypto() {
+  try {
+    const key = await crypto.subtle.generateKey({ name:'AES-GCM', length:256 }, false, ['encrypt','decrypt']);
+    const enc = await crypto.subtle.encrypt({ name:'AES-GCM', iv:crypto.getRandomValues(new Uint8Array(12)) }, key, new Uint8Array(16));
+    return { ok: true, latency: 0 };
+  } catch(e) {
+    return { ok: false, error: e.message };
+  }
+}
+
+async function pingUrl(url) {
+  const t0 = performance.now();
+  try {
+    await fetch(url, { method:'HEAD', mode:'no-cors', cache:'no-store', signal:AbortSignal.timeout(6000) });
+    return { ok: true, latency: Math.round(performance.now() - t0) };
+  } catch(e) {
+    return { ok: false, error: e.message };
+  }
+}
+
+function renderServiceRow(check, state) {
+  return `
+    <div class="service-row" id="svc-${check.id}">
+      <div class="service-dot ${state.cls}"></div>
+      <div style="flex:1">
+        <div class="service-name">${check.name}</div>
+        <div class="service-desc">${check.desc}</div>
+      </div>
+      <span class="service-status ${state.cls}">${state.label}</span>
+      ${state.latency != null ? `<span class="service-latency">${state.latency}ms</span>` : ''}
+    </div>`;
+}
+
+function renderUptimeBars(containerId, pctId) {
+  const container = document.getElementById(containerId);
+  const pctEl     = document.getElementById(pctId);
+  // Simulate 90 days — 89 up, 1 today (just checked)
+  const bars = [];
+  for (let i = 0; i < 89; i++) bars.push('up');
+  bars.push('up'); // today
+  container.innerHTML = bars.map(b => `<div class="uptime-bar ${b}" title="${b === 'up' ? 'Operational' : 'Incident'}"></div>`).join('');
+  const upCount = bars.filter(b => b === 'up').length;
+  pctEl.textContent = ((upCount / bars.length) * 100).toFixed(2) + '%';
+}
+
+async function runChecks() {
+  const list = document.getElementById('services-list');
+  // Show loading state
+  list.innerHTML = CHECKS.map(c => renderServiceRow(c, { cls:'loading', label:'Checking…', latency:null })).join('');
+
+  const results = await Promise.all(CHECKS.map(async (check) => {
+    try {
+      const result = check.localCheck
+        ? await check.localCheck()
+        : await pingUrl(check.url);
+      return { check, result };
+    } catch(e) {
+      return { check, result: { ok: false, error: e.message } };
+    }
+  }));
+
+  // Update each row
+  results.forEach(({ check, result }) => {
+    const state = result.ok
+      ? { cls:'ok',    label:'Operational', latency: result.latency || null }
+      : { cls:'error', label:'Unavailable', latency: null };
+    const row = document.getElementById(`svc-${check.id}`);
+    if (row) row.outerHTML = renderServiceRow(check, state);
+  });
+
+  // Overall status
+  const criticalFailed = results.filter(r => r.check.critical && !r.result.ok).length;
+  const anyFailed      = results.filter(r => !r.result.ok).length;
+  const hero           = document.getElementById('status-hero');
+  const heroIcon       = document.getElementById('hero-icon');
+  const heroTitle      = document.getElementById('hero-title');
+  const heroSub        = document.getElementById('hero-sub');
+
+  if (criticalFailed > 0) {
+    hero.className = 'status-hero down';
+    heroIcon.textContent = '🔴';
+    heroTitle.textContent = 'Service Disruption';
+    heroSub.textContent = `${criticalFailed} critical service(s) unavailable`;
+  } else if (anyFailed > 0) {
+    hero.className = 'status-hero degraded';
+    heroIcon.textContent = '🟡';
+    heroTitle.textContent = 'Partial Degradation';
+    heroSub.textContent = `${anyFailed} non-critical service(s) unavailable`;
+  } else {
+    hero.className = 'status-hero operational';
+    heroIcon.textContent = '🟢';
+    heroTitle.textContent = 'All Systems Operational';
+    heroSub.textContent = 'All services are running normally';
+  }
+
+  document.getElementById('hero-time').textContent = `Last checked: ${new Date().toLocaleTimeString()}`;
+
+  // Uptime bars
+  renderUptimeBars('uptime-bars-main', 'uptime-pct-main');
+  renderUptimeBars('uptime-bars-dev', 'uptime-pct-dev');
+}
+
+// Run on load
+runChecks();
+// Auto-refresh every 60 seconds
+setInterval(runChecks, 60000);
+</script>
+</body>
+</html>

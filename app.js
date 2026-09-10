@@ -1763,6 +1763,152 @@ document.getElementById('hide-pw-confirm')?.addEventListener('keydown', e => {
 });
 
 // ═══════════════════════════════════════════════════════════════════════
+// DRAG & DROP — global, context-aware
+// ═══════════════════════════════════════════════════════════════════════
+(function initDragDrop() {
+  const overlay  = document.getElementById('drag-overlay');
+  const dTitle   = document.getElementById('drag-title');
+  const dSub     = document.getElementById('drag-sub');
+  let   dragDepth = 0; // track nested enter/leave events
+
+  function getActiveTab() {
+    const a = document.querySelector('.tab-btn.active');
+    return a ? a.dataset.tab : 'hide';
+  }
+
+  function updateOverlayText() {
+    const tab = getActiveTab();
+    if (tab === 'open') {
+      dTitle.textContent = 'Drop vault image(s) to open';
+      dSub.textContent   = 'JPEG or PNG vault files will be loaded';
+    } else {
+      dTitle.textContent = 'Drop files to hide';
+      dSub.textContent   = 'They\'ll be added to your encrypted vault';
+    }
+  }
+
+  window.addEventListener('dragenter', e => {
+    if (!e.dataTransfer?.types.includes('Files')) return;
+    e.preventDefault();
+    dragDepth++;
+    if (dragDepth === 1) {
+      updateOverlayText();
+      overlay.classList.remove('hidden');
+    }
+  });
+
+  window.addEventListener('dragleave', e => {
+    e.preventDefault();
+    dragDepth--;
+    if (dragDepth <= 0) { dragDepth = 0; overlay.classList.add('hidden'); }
+  });
+
+  window.addEventListener('dragover', e => {
+    if (!e.dataTransfer?.types.includes('Files')) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'copy';
+  });
+
+  window.addEventListener('drop', e => {
+    e.preventDefault();
+    dragDepth = 0;
+    overlay.classList.add('hidden');
+
+    const files = Array.from(e.dataTransfer.files);
+    if (!files.length) return;
+
+    const tab = getActiveTab();
+    if (tab === 'open') {
+      // Open Vault tab — treat dropped files as vault images
+      const vaultFiles = files.filter(f => /\.(jpg|jpeg|png)$/i.test(f.name));
+      if (!vaultFiles.length) { toast('Drop a JPEG or PNG vault image.', 'error'); return; }
+      vaultEntries = vaultFiles.map(f => ({ name: f.name, file: f }));
+      const vls = document.getElementById('vault-load-status');
+      vls.className = 'folder-status loaded';
+      vls.textContent = vaultFiles.length === 1
+        ? `✔ ${vaultFiles[0].name}  (${fmtBytes(vaultFiles[0].size)})`
+        : `✔ ${vaultFiles.length} vault images dropped`;
+      toast(`${vaultFiles.length} vault image(s) ready. Enter password and unlock.`, 'success');
+    } else {
+      // Hide Files tab — add dropped files to secret list
+      const before = secretFiles.length;
+      addSecretFiles(files);
+      const added = secretFiles.length - before;
+      toast(added > 0 ? `➕ Added ${added} file(s). Total: ${secretFiles.length}` : 'Files already in list.', added > 0 ? 'success' : 'error');
+    }
+  });
+
+  overlay.addEventListener('click', () => { dragDepth = 0; overlay.classList.add('hidden'); });
+})();
+
+// ═══════════════════════════════════════════════════════════════════════
+// PASSWORD STRENGTH METER
+// ═══════════════════════════════════════════════════════════════════════
+function calcStrength(pw) {
+  if (!pw) return { level: 0, label: 'Enter a passphrase', checks: {} };
+  const checks = {
+    len:   pw.length >= 8,
+    upper: /[A-Z]/.test(pw),
+    num:   /[0-9]/.test(pw),
+    sym:   /[^A-Za-z0-9]/.test(pw),
+    long:  pw.length >= 16,
+  };
+  // Entropy estimate (simplified)
+  let pool = 0;
+  if (/[a-z]/.test(pw)) pool += 26;
+  if (checks.upper)     pool += 26;
+  if (checks.num)       pool += 10;
+  if (checks.sym)       pool += 32;
+  const entropy = pw.length * Math.log2(pool || 1);
+
+  let level, label;
+  if (entropy < 28)      { level = 1; label = '🔴 Very Weak'; }
+  else if (entropy < 45) { level = 2; label = '🟠 Weak'; }
+  else if (entropy < 60) { level = 3; label = '🟡 Fair'; }
+  else if (entropy < 80) { level = 4; label = '🟢 Strong'; }
+  else                   { level = 5; label = '✅ Very Strong'; }
+  return { level, label, checks };
+}
+
+document.getElementById('hide-pw')?.addEventListener('input', function() {
+  const { level, label, checks } = calcStrength(this.value);
+  const bar  = document.getElementById('strength-bar');
+  const lbl  = document.getElementById('strength-label');
+  bar.className = level ? `strength-bar s${level}` : 'strength-bar';
+  lbl.className = level ? `strength-label s${level}` : 'strength-label';
+  lbl.textContent = this.value ? label : 'Enter a passphrase';
+  // Update check badges
+  const map = { len:'sc-len', upper:'sc-upper', num:'sc-num', sym:'sc-sym', long:'sc-long' };
+  Object.entries(map).forEach(([key, id]) => {
+    document.getElementById(id)?.classList.toggle('pass', !!checks[key]);
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════
+// KEYBOARD SHORTCUTS MODAL (press ? to open)
+// ═══════════════════════════════════════════════════════════════════════
+function openKbdModal()  { document.getElementById('kbd-modal')?.classList.remove('hidden'); }
+function closeKbdModal() { document.getElementById('kbd-modal')?.classList.add('hidden'); }
+
+document.getElementById('btn-close-kbd')?.addEventListener('click', closeKbdModal);
+document.getElementById('btn-shortcuts')?.addEventListener('click', openKbdModal);
+document.getElementById('kbd-modal')?.addEventListener('click', e => {
+  if (e.target === document.getElementById('kbd-modal')) closeKbdModal();
+});
+
+// Wire ? key into existing keyboard handler — extend the switch case
+// (handled in the main keyboard handler below via a patch)
+document.addEventListener('keydown', e => {
+  if (e.key === '?' && !e.ctrlKey && !e.altKey) {
+    const active = document.activeElement;
+    if (active && (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA')) return;
+    e.preventDefault();
+    openKbdModal();
+  }
+  if (e.key === 'Escape') closeKbdModal();
+}, { capture: false });
+
+// ═══════════════════════════════════════════════════════════════════════
 // INITIALISE ON DOM READY
 // ═══════════════════════════════════════════════════════════════════════
 document.addEventListener('DOMContentLoaded', () => {

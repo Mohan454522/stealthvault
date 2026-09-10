@@ -20,6 +20,9 @@
         <button class="tab-btn" data-tab="changepw">Change Password</button>
       </div>
       <div class="nav-right">
+        <a href="changelog.html" class="nav-ext-link" title="Changelog" target="_blank">📋</a>
+        <a href="status.html"    class="nav-ext-link" title="Status" target="_blank">🟢</a>
+        <button class="nav-ext-link" id="btn-shortcuts" title="Keyboard shortcuts (?)">⌨️</button>
         <div id="worker-badge" class="worker-badge">loading…</div>
         <button class="btn-settings" id="btn-open-settings" title="Settings">⚙️</button>
       </div>
@@ -139,11 +142,14 @@
     <div class="card">
 
       <!-- STEP 1: Secret Files -->
-      <div class="step" id="step-secrets">
+      <div class="step drop-zone" id="step-secrets">
         <div class="step-num">01</div>
         <div class="step-body">
           <h3>Select Files to Hide</h3>
           <p>Add individual files or a whole folder. Mix any file types — videos, photos, PDFs, anything.</p>
+          <div class="drop-hint" id="drop-hint-hide">
+            <span>⬇ or drag &amp; drop files anywhere on this page</span>
+          </div>
           <div class="btn-row">
             <button class="btn-primary" id="btn-pick-secret-files">&#128196; Select Files</button>
             <button class="btn-primary" id="btn-add-more-files">&#43; Add More</button>
@@ -211,15 +217,30 @@
           <h3>Passphrase</h3>
           <p>All files will be encrypted with AES-256 using this passphrase. Use at least 8 characters.</p>
           <div class="password-wrap">
-            <input type="password" id="hide-pw" class="input-text" placeholder="Enter a strong passphrase…" />
+            <input type="password" id="hide-pw" class="input-text" placeholder="Enter a strong passphrase…" autocomplete="new-password" />
             <button class="btn-icon" id="toggle-hide-pw">&#128065;</button>
           </div>
+          <!-- Password strength meter -->
+          <div class="strength-meter" id="strength-meter">
+            <div class="strength-bar-wrap">
+              <div class="strength-bar" id="strength-bar"></div>
+            </div>
+            <div class="strength-label" id="strength-label">Enter a passphrase</div>
+          </div>
+          <div class="strength-checks" id="strength-checks">
+            <span class="sc" id="sc-len">8+ chars</span>
+            <span class="sc" id="sc-upper">A-Z</span>
+            <span class="sc" id="sc-num">0-9</span>
+            <span class="sc" id="sc-sym">!@#</span>
+            <span class="sc" id="sc-long">16+ chars</span>
+          </div>
           <div class="password-wrap" style="margin-top:10px;">
-            <input type="password" id="hide-pw-confirm" class="input-text" placeholder="Confirm passphrase…" />
+            <input type="password" id="hide-pw-confirm" class="input-text" placeholder="Confirm passphrase…" autocomplete="new-password" />
           </div>
           <div id="hide-pw-match" class="step-inline-hint hidden"></div>
         </div>
       </div>
+
 
       <!-- Output file name list (dynamic) -->
       <div id="output-names-section" class="hidden">
@@ -518,6 +539,43 @@
         <button class="nav-btn" id="btn-next">Next &#8594;</button>
       </div>
 
+    </div>
+  </div>
+
+  <!-- Global drag-and-drop overlay -->
+  <div id="drag-overlay" class="drag-overlay hidden">
+    <div class="drag-overlay-inner">
+      <div class="drag-icon">📂</div>
+      <div class="drag-title" id="drag-title">Drop files to hide</div>
+      <div class="drag-sub" id="drag-sub">They'll be added to your secret files list</div>
+    </div>
+  </div>
+
+  <!-- Keyboard shortcuts modal -->
+  <div id="kbd-modal" class="kbd-modal hidden">
+    <div class="kbd-modal-inner">
+      <div class="kbd-modal-header">
+        <span>⌨️ Keyboard Shortcuts</span>
+        <button id="btn-close-kbd" class="btn-icon">✕</button>
+      </div>
+      <div class="kbd-grid">
+        <div class="kbd-section-title">Viewer Navigation</div>
+        <div class="kbd-row"><kbd>N</kbd> <span>Next file</span></div>
+        <div class="kbd-row"><kbd>B</kbd> <span>Previous file</span></div>
+        <div class="kbd-row"><kbd>←</kbd><kbd>→</kbd> <span>Skip video / navigate image</span></div>
+        <div class="kbd-row"><kbd>↑</kbd><kbd>↓</kbd> <span>Volume up / down</span></div>
+        <div class="kbd-section-title">Playback</div>
+        <div class="kbd-row"><kbd>Space</kbd> <span>Play / Pause</span></div>
+        <div class="kbd-row"><kbd>M</kbd> <span>Mute toggle</span></div>
+        <div class="kbd-row"><kbd>F</kbd> <span>Fullscreen</span></div>
+        <div class="kbd-row"><kbd>P</kbd> <span>Picture in Picture</span></div>
+        <div class="kbd-section-title">App</div>
+        <div class="kbd-row"><kbd>Esc</kbd> <span>Close viewer / settings</span></div>
+        <div class="kbd-row"><kbd>?</kbd> <span>This help screen</span></div>
+        <div class="kbd-section-title">Mobile</div>
+        <div class="kbd-row"><span>Swipe ←→</span> <span>Navigate files</span></div>
+        <div class="kbd-row"><span>Swipe ↓</span> <span>Close viewer</span></div>
+      </div>
     </div>
   </div>
 

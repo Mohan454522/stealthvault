@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>StealthVault — Changelog</title>
+  <style>
+    :root {
+      --bg:#080c14; --surface:#0f1520; --surface2:#141c2a; --surface3:#1a2235;
+      --border:#1e2a3d; --border2:#263349;
+      --text:#e8edf5; --text2:#8899b0; --text3:#4a5a72;
+      --accent:#00a8ff; --accent2:#0066cc; --adim:rgba(0,168,255,0.08);
+      --success:#00e896; --error:#ff3a6e; --warn:#ffb020;
+      --font:'Inter',system-ui,sans-serif; --mono:'JetBrains Mono','Fira Code',monospace;
+    }
+    * { box-sizing:border-box; margin:0; padding:0; }
+    body { background:var(--bg); color:var(--text); font-family:var(--font); min-height:100vh; }
+
+    /* Nav */
+    nav { background:rgba(8,12,20,0.95); border-bottom:1px solid var(--border); padding:0 24px; position:sticky; top:0; z-index:100; backdrop-filter:blur(12px); }
+    .nav-inner { max-width:800px; margin:0 auto; display:flex; align-items:center; gap:20px; height:56px; }
+    .nav-logo { font-size:15px; font-weight:800; letter-spacing:0.04em; text-decoration:none; color:var(--text); }
+    .nav-logo span { color:var(--accent); }
+    .nav-links { display:flex; gap:4px; margin-left:auto; }
+    .nav-link { padding:7px 14px; border-radius:8px; text-decoration:none; font-size:13px; font-weight:600; color:var(--text2); transition:all 0.18s; }
+    .nav-link:hover { background:var(--surface2); color:var(--text); }
+    .nav-link.active { background:var(--adim); color:var(--accent); }
+
+    /* Page */
+    .wrap { max-width:800px; margin:0 auto; padding:48px 24px; }
+    .page-header { text-align:center; margin-bottom:56px; }
+    .page-header h1 { font-size:36px; font-weight:800; margin-bottom:10px; }
+    .page-header p { font-size:15px; color:var(--text2); }
+
+    /* Loading */
+    .loading { text-align:center; padding:60px; color:var(--text3); font-size:14px; }
+    .spinner { width:32px; height:32px; border:3px solid var(--border2); border-top-color:var(--accent); border-radius:50%; animation:spin 0.8s linear infinite; margin:0 auto 16px; }
+    @keyframes spin { to { transform:rotate(360deg); } }
+
+    /* Timeline */
+    .timeline { display:flex; flex-direction:column; gap:0; }
+    .release-item { display:flex; gap:24px; padding-bottom:40px; position:relative; }
+    .release-item:last-child { padding-bottom:0; }
+    .release-spine { display:flex; flex-direction:column; align-items:center; flex-shrink:0; width:20px; }
+    .release-dot { width:14px; height:14px; border-radius:50%; border:2px solid var(--border2); background:var(--surface2); flex-shrink:0; margin-top:6px; }
+    .release-dot.latest { background:var(--accent2); border-color:var(--accent); box-shadow:0 0 12px rgba(0,168,255,0.4); }
+    .release-line { width:2px; flex:1; background:var(--border); margin-top:6px; }
+    .release-item:last-child .release-line { display:none; }
+    .release-content { flex:1; min-width:0; padding-top:2px; }
+    .release-header { display:flex; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:10px; }
+    .release-tag { font-size:18px; font-weight:800; font-family:var(--mono); color:var(--text); }
+    .release-badge { font-size:10px; font-weight:700; letter-spacing:0.08em; text-transform:uppercase; padding:3px 10px; border-radius:20px; }
+    .badge-latest  { background:var(--adim); color:var(--accent); border:1px solid var(--accent2); }
+    .badge-release { background:rgba(0,232,150,0.08); color:var(--success); border:1px solid rgba(0,232,150,0.2); }
+    .release-date { font-size:12px; color:var(--text3); font-family:var(--mono); margin-left:auto; }
+    .release-card { background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:20px 22px; }
+    .release-body { font-size:14px; color:var(--text2); line-height:1.75; }
+    .release-body h2 { font-size:14px; font-weight:700; color:var(--text); margin:16px 0 6px; }
+    .release-body h2:first-child { margin-top:0; }
+    .release-body ul { padding-left:18px; display:flex; flex-direction:column; gap:4px; }
+    .release-body li { color:var(--text2); }
+    .release-body strong { color:var(--text); }
+    .release-body code { font-family:var(--mono); font-size:12px; background:var(--surface2); padding:1px 6px; border-radius:4px; color:var(--accent); }
+    .release-body hr { border:none; border-top:1px solid var(--border); margin:14px 0; }
+    .release-body p { margin-bottom:8px; }
+
+    /* Empty fallback */
+    .fallback-note { background:var(--surface2); border:1px solid var(--border); border-radius:10px; padding:20px; font-size:13px; color:var(--text2); margin-top:24px; }
+
+    /* Footer */
+    footer { text-align:center; padding:40px 24px; font-size:12px; color:var(--text3); border-top:1px solid var(--border); margin-top:40px; }
+    footer a { color:var(--text2); text-decoration:none; }
+    footer a:hover { color:var(--accent); }
+  </style>
+</head>
+<body>
+
+<nav>
+  <div class="nav-inner">
+    <a class="nav-logo" href="index.html">Stealth<span>Vault</span></a>
+    <div class="nav-links">
+      <a class="nav-link" href="index.html">App</a>
+      <a class="nav-link active" href="changelog.html">Changelog</a>
+      <a class="nav-link" href="status.html">Status</a>
+      <a class="nav-link" href="admin.html">Admin</a>
+    </div>
+  </div>
+</nav>
+
+<div class="wrap">
+  <div class="page-header">
+    <h1>Changelog</h1>
+    <p>Every release of StealthVault — pulled live from GitHub</p>
+  </div>
+
+  <div id="changelog-content">
+    <div class="loading">
+      <div class="spinner"></div>
+      Loading release history…
+    </div>
+  </div>
+</div>
+
+<footer>
+  <a href="https://github.com/Mohan454522/stealthvault/releases" target="_blank">View on GitHub</a> ·
+  <a href="index.html">Open StealthVault</a> ·
+  Encrypted locally · No servers · No accounts
+</footer>
+
+<script>
+const REPO = 'Mohan454522/stealthvault';
+const API  = `https://api.github.com/repos/${REPO}/releases`;
+
+// Built-in fallback changelog (shown if API fails or no releases yet)
+const FALLBACK = [
+  {
+    tag_name: 'v0.6.0-dev',
+    name: 'StealthVault v6 — Current Dev Build',
+    published_at: new Date().toISOString(),
+    prerelease: false,
+    body: `## What's in the current build\n\n**Encryption Engine**\n- AES-256-GCM encryption · PBKDF2-SHA256 · 310,000 rounds\n- 64 MB default chunk size (stored in vault header — auto-detected)\n- V6 binary format with END_MARKER for reliable detection\n\n**Hide Files**\n- Select Files / Add More / Select Folder (all append safely)\n- Drag & drop files anywhere on the page\n- Password strength meter with 5 levels\n- Green done-banner after encryption completes\n\n**Open Vault**\n- Open single file or entire folder\n- Mixed-password vaults: opens matched files, skips others\n- Gallery with grid/list view, search, and type filters (All/Video/Image/Audio/Docs)\n- Inline Change Password — old password pre-filled from session\n\n**Video Player**\n- Skip buttons (configurable: 5/10/15/30s)\n- Auto-next countdown with cancel button\n- Fullscreen navigation (stays fullscreen when navigating)\n- Keyboard: N/B navigate, ← → skip, ↑ ↓ volume, Space play/pause\n\n**Mobile**\n- Swipe ← → to navigate files\n- Swipe ↓ to close viewer\n\n**Settings Panel**\n- Chunk size, worker count, skip seconds, auto-play, prefetch, preview limit\n- Persisted to localStorage\n\n**Admin & DevOps**\n- admin.html control center\n- GitHub Actions CI + promote workflow\n- Changelog page (this page)\n- Status page`
+  }
+];
+
+function formatDate(iso) {
+  return new Date(iso).toLocaleDateString('en-US', { year:'numeric', month:'long', day:'numeric' });
+}
+
+function parseMarkdown(md) {
+  if (!md) return '<p><em>No release notes provided.</em></p>';
+  return md
+    .replace(/^## (.+)$/gm, '<h2>$1</h2>')
+    .replace(/^### (.+)$/gm, '<h3>$1</h3>')
+    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+    .replace(/`([^`]+)`/g, '<code>$1</code>')
+    .replace(/^- (.+)$/gm, '<li>$1</li>')
+    .replace(/(<li>.*<\/li>\n?)+/gs, m => `<ul>${m}</ul>`)
+    .replace(/^---$/gm, '<hr>')
+    .replace(/\n{2,}/g, '</p><p>')
+    .replace(/^(?!<[huli]|<p>|<hr)(.+)$/gm, '<p>$1</p>')
+    .replace(/<p><\/p>/g, '');
+}
+
+function renderReleases(releases) {
+  const container = document.getElementById('changelog-content');
+  if (!releases.length) {
+    container.innerHTML = `
+      <div class="fallback-note">
+        No releases yet. The first release will appear here automatically after running the promote workflow.
+      </div>`;
+    return;
+  }
+
+  const html = releases.map((r, i) => `
+    <div class="release-item">
+      <div class="release-spine">
+        <div class="release-dot ${i === 0 ? 'latest' : ''}"></div>
+        <div class="release-line"></div>
+      </div>
+      <div class="release-content">
+        <div class="release-header">
+          <span class="release-tag">${r.tag_name}</span>
+          ${i === 0 ? '<span class="release-badge badge-latest">Latest</span>' : '<span class="release-badge badge-release">Release</span>'}
+          ${r.prerelease ? '<span class="release-badge" style="background:rgba(255,176,32,0.1);color:#ffb020;border-color:rgba(255,176,32,0.3);">Pre-release</span>' : ''}
+          <span class="release-date">${formatDate(r.published_at)}</span>
+        </div>
+        <div class="release-card">
+          ${r.name && r.name !== r.tag_name ? `<p style="font-weight:700;font-size:15px;margin-bottom:12px;color:var(--text)">${r.name}</p>` : ''}
+          <div class="release-body">${parseMarkdown(r.body)}</div>
+        </div>
+      </div>
+    </div>
+  `).join('');
+
+  container.innerHTML = `<div class="timeline">${html}</div>`;
+}
+
+async function loadChangelog() {
+  try {
+    const res = await fetch(API, {
+      headers: { 'Accept': 'application/vnd.github.v3+json' }
+    });
+    if (!res.ok) throw new Error(`GitHub API: ${res.status}`);
+    const releases = await res.json();
+    renderReleases(releases.length ? releases : FALLBACK);
+  } catch (e) {
+    console.warn('GitHub API unavailable, using fallback:', e.message);
+    renderReleases(FALLBACK);
+  }
+}
+
+loadChangelog();
+</script>
+</body>
+</html>
