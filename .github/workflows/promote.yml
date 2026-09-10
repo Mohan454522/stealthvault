@@ -1,0 +1,86 @@
+name: Promote dev → main (Release to Production)
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_notes:
+        description: "What changed in this release? (shown in GitHub release)"
+        required: true
+        default: "Bug fixes and improvements"
+      version_tag:
+        description: "Version tag (e.g. v1.2.0)"
+        required: true
+        default: "v1.0.0"
+      dry_run:
+        description: "Dry run? (yes = just show what would happen, no = actually release)"
+        required: true
+        default: "yes"
+        type: choice
+        options: [yes, no]
+
+jobs:
+  promote:
+    name: Promote dev to main
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout dev branch
+        uses: actions/checkout@v4
+        with:
+          ref: dev
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Show what will be promoted
+        run: |
+          echo "==========================================="
+          echo "  StealthVault — Production Release"
+          echo "==========================================="
+          echo "  Version:  ${{ github.event.inputs.version_tag }}"
+          echo "  Dry run:  ${{ github.event.inputs.dry_run }}"
+          echo ""
+          echo "  Commits in dev that are NOT yet in main:"
+          git log origin/main..HEAD --oneline --no-decorate
+
+      - name: Merge dev into main
+        if: ${{ github.event.inputs.dry_run == 'no' }}
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git checkout main
+          git pull origin main
+          git merge dev --no-ff -m "release: ${{ github.event.inputs.version_tag }} — ${{ github.event.inputs.release_notes }}"
+          git push origin main
+          echo "  ✔ dev merged into main successfully"
+
+      - name: Create GitHub Release
+        if: ${{ github.event.inputs.dry_run == 'no' }}
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.event.inputs.version_tag }}
+          name: "StealthVault ${{ github.event.inputs.version_tag }}"
+          body: |
+            ## StealthVault ${{ github.event.inputs.version_tag }}
+
+            ${{ github.event.inputs.release_notes }}
+
+            ---
+            **Encryption:** AES-256-GCM · PBKDF2 310,000 rounds  
+            **Format:** StealthVault v6 (chunk size stored in header)  
+            **Hosting:** vaults.codes via Cloudflare Pages  
+
+            > ⚠ Files encrypted with older versions remain fully compatible.
+          target_commitish: main
+          draft: false
+          prerelease: false
+
+      - name: Done
+        run: |
+          if [ "${{ github.event.inputs.dry_run }}" == "yes" ]; then
+            echo "✔ Dry run complete — nothing was changed."
+            echo "  Run again with dry_run=no to actually release."
+          else
+            echo "✔ Released ${{ github.event.inputs.version_tag }} to production!"
+            echo "  → main branch updated"
+            echo "  → Cloudflare Pages will auto-deploy to vaults.codes"
+          fi

@@ -19,9 +19,115 @@
         <button class="tab-btn" data-tab="open">Open Vault</button>
         <button class="tab-btn" data-tab="changepw">Change Password</button>
       </div>
-      <div id="worker-badge" class="worker-badge">loading…</div>
+      <div class="nav-right">
+        <a href="changelog.html" class="nav-ext-link" title="Changelog" target="_blank">📋</a>
+        <a href="status.html"    class="nav-ext-link" title="Status" target="_blank">🟢</a>
+        <button class="nav-ext-link" id="btn-shortcuts" title="Keyboard shortcuts (?)">⌨️</button>
+        <div id="worker-badge" class="worker-badge">loading…</div>
+        <button class="btn-settings" id="btn-open-settings" title="Settings">⚙️</button>
+      </div>
     </div>
   </nav>
+
+  <!-- ══ SETTINGS PANEL ══ -->
+  <div id="settings-overlay" class="settings-overlay hidden"></div>
+  <div id="settings-panel" class="settings-panel hidden">
+    <div class="settings-header">
+      <span class="settings-title">⚙️ Settings</span>
+      <button class="btn-icon" id="btn-close-settings">✕</button>
+    </div>
+
+    <div class="settings-section">
+      <div class="settings-section-title">Encryption</div>
+
+      <div class="settings-row">
+        <label>Chunk Size <span class="settings-hint">(for new encryptions only)</span></label>
+        <div class="settings-chips" id="chunk-size-chips">
+          <button class="chip" data-val="16">16 MB</button>
+          <button class="chip" data-val="32">32 MB</button>
+          <button class="chip active" data-val="64">64 MB</button>
+          <button class="chip" data-val="128">128 MB</button>
+          <button class="chip" data-val="256">256 MB</button>
+        </div>
+        <p class="settings-note">Old files always decrypt correctly — their chunk size is stored inside them.</p>
+      </div>
+
+      <div class="settings-row">
+        <label>Parallel Workers <span class="settings-hint">(higher = faster on multicore CPUs)</span></label>
+        <div class="settings-chips" id="worker-count-chips">
+          <button class="chip" data-val="1">1</button>
+          <button class="chip" data-val="2">2</button>
+          <button class="chip active" data-val="4">4</button>
+          <button class="chip" data-val="6">6</button>
+          <button class="chip" data-val="8">8</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="settings-section">
+      <div class="settings-section-title">Video Player</div>
+
+      <div class="settings-row">
+        <label>Skip Amount</label>
+        <div class="settings-chips" id="skip-seconds-chips">
+          <button class="chip" data-val="5">5s</button>
+          <button class="chip active" data-val="10">10s</button>
+          <button class="chip" data-val="15">15s</button>
+          <button class="chip" data-val="30">30s</button>
+        </div>
+      </div>
+
+      <div class="settings-row settings-toggle-row">
+        <label>Auto-play next when video ends</label>
+        <label class="toggle">
+          <input type="checkbox" id="toggle-autoplay" checked />
+          <span class="toggle-track"></span>
+        </label>
+      </div>
+
+      <div class="settings-row" id="autoplay-delay-row">
+        <label>Countdown before auto-next</label>
+        <div class="settings-chips" id="autoplay-delay-chips">
+          <button class="chip" data-val="0">Instant</button>
+          <button class="chip" data-val="3">3s</button>
+          <button class="chip active" data-val="5">5s</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="settings-section">
+      <div class="settings-section-title">Gallery</div>
+
+      <div class="settings-row">
+        <label>Prefetch ahead <span class="settings-hint">(items decrypted in background)</span></label>
+        <div class="settings-chips" id="prefetch-chips">
+          <button class="chip" data-val="1">1</button>
+          <button class="chip active" data-val="2">2</button>
+          <button class="chip" data-val="3">3</button>
+          <button class="chip" data-val="4">4</button>
+        </div>
+      </div>
+
+      <div class="settings-row">
+        <label>In-browser preview limit</label>
+        <div class="settings-chips" id="preview-limit-chips">
+          <button class="chip" data-val="512">512 MB</button>
+          <button class="chip" data-val="1024">1 GB</button>
+          <button class="chip active" data-val="2048">2 GB</button>
+          <button class="chip" data-val="4096">4 GB</button>
+        </div>
+        <p class="settings-note">Files above this show "Use Export" instead of previewing in browser.</p>
+      </div>
+    </div>
+
+    <div class="settings-section">
+      <div class="settings-section-title">About</div>
+      <div class="settings-row">
+        <p class="settings-note" style="color:var(--text2);">StealthVault v6 · AES-256-GCM · PBKDF2 310k rounds<br>Settings saved in your browser (localStorage).</p>
+        <button class="btn-ghost" id="btn-reset-settings" style="margin-top:10px;">Reset to defaults</button>
+      </div>
+    </div>
+  </div>
 
   <!-- ═══════════════════════════════════
        TAB 1 — HIDE FILES
@@ -36,29 +142,34 @@
     <div class="card">
 
       <!-- STEP 1: Secret Files -->
-      <div class="step">
+      <div class="step drop-zone" id="step-secrets">
         <div class="step-num">01</div>
         <div class="step-body">
           <h3>Select Files to Hide</h3>
           <p>Add individual files or a whole folder. Mix any file types — videos, photos, PDFs, anything.</p>
+          <div class="drop-hint" id="drop-hint-hide">
+            <span>⬇ or drag &amp; drop files anywhere on this page</span>
+          </div>
           <div class="btn-row">
             <button class="btn-primary" id="btn-pick-secret-files">&#128196; Select Files</button>
+            <button class="btn-primary" id="btn-add-more-files">&#43; Add More</button>
             <button class="btn-primary" id="btn-pick-secret-folder">&#128193; Select Folder</button>
             <button class="btn-ghost" id="btn-clear-secrets">&#215; Clear All</button>
           </div>
           <input type="file" id="input-secret-files" multiple hidden />
+          <input type="file" id="input-add-more-files" multiple hidden />
           <div id="secrets-list" class="file-list"></div>
           <div id="secrets-summary" class="file-summary hidden"></div>
         </div>
       </div>
 
       <!-- STEP 2: Cover Image -->
-      <div class="step">
+      <div class="step" id="step-cover">
         <div class="step-num">02</div>
         <div class="step-body">
           <h3>Select Cover Image</h3>
-          <p>An innocent-looking photo that anyone opening the file will see. Your files are hidden behind it.</p>
-          <button class="btn-primary" id="btn-pick-dummy">&#128247; Choose Image</button>
+          <p>An innocent-looking JPEG or PNG. Anyone who opens the file will see only this photo.</p>
+          <button class="btn-primary" id="btn-pick-dummy">&#128247; Choose Cover Image</button>
           <input type="file" id="input-dummy" accept="image/jpeg,image/jpg,image/png" hidden />
           <div id="dummy-name" class="file-summary hidden"></div>
           <div id="dummy-preview" class="dummy-preview"></div>
@@ -70,25 +181,19 @@
         <div class="step-num">03</div>
         <div class="step-body">
           <h3>Bundling Mode</h3>
-          <p>How should the files be packaged?</p>
+          <p>How many vault images should be created?</p>
           <div class="mode-cards">
             <label class="mode-card active" data-mode="one-to-one">
               <input type="radio" name="hide-mode" value="one-to-one" checked hidden />
               <div class="mode-icon">&#128196;</div>
-              <div class="mode-label">One file per image</div>
-              <div class="mode-desc">Each file gets its own disguised image. 10 files = 10 images.</div>
+              <div class="mode-label">One File Per Image</div>
+              <div class="mode-desc">Each secret file gets its own disguised image. Easiest to manage.</div>
             </label>
             <label class="mode-card" data-mode="all-in-one">
               <input type="radio" name="hide-mode" value="all-in-one" hidden />
-              <div class="mode-icon">&#128218;</div>
-              <div class="mode-label">All files in one image</div>
-              <div class="mode-desc">All files bundled into a single disguised image. Browse all from one vault.</div>
-            </label>
-            <label class="mode-card" data-mode="same-dummy">
-              <input type="radio" name="hide-mode" value="same-dummy" hidden />
-              <div class="mode-icon">&#128084;</div>
-              <div class="mode-label">Each file, same cover</div>
-              <div class="mode-desc">Each file gets a copy of the same cover image. Named cover_001.jpg, cover_002.jpg…</div>
+              <div class="mode-icon">&#128220;</div>
+              <div class="mode-label">All Files in One Image</div>
+              <div class="mode-desc">Everything bundled into a single image. One file, one password.</div>
             </label>
           </div>
         </div>
@@ -112,14 +217,30 @@
           <h3>Passphrase</h3>
           <p>All files will be encrypted with AES-256 using this passphrase. Use at least 8 characters.</p>
           <div class="password-wrap">
-            <input type="password" id="hide-pw" class="input-text" placeholder="Enter a strong passphrase…" />
+            <input type="password" id="hide-pw" class="input-text" placeholder="Enter a strong passphrase…" autocomplete="new-password" />
             <button class="btn-icon" id="toggle-hide-pw">&#128065;</button>
           </div>
-          <div class="password-wrap" style="margin-top:10px;">
-            <input type="password" id="hide-pw-confirm" class="input-text" placeholder="Confirm passphrase…" />
+          <!-- Password strength meter -->
+          <div class="strength-meter" id="strength-meter">
+            <div class="strength-bar-wrap">
+              <div class="strength-bar" id="strength-bar"></div>
+            </div>
+            <div class="strength-label" id="strength-label">Enter a passphrase</div>
           </div>
+          <div class="strength-checks" id="strength-checks">
+            <span class="sc" id="sc-len">8+ chars</span>
+            <span class="sc" id="sc-upper">A-Z</span>
+            <span class="sc" id="sc-num">0-9</span>
+            <span class="sc" id="sc-sym">!@#</span>
+            <span class="sc" id="sc-long">16+ chars</span>
+          </div>
+          <div class="password-wrap" style="margin-top:10px;">
+            <input type="password" id="hide-pw-confirm" class="input-text" placeholder="Confirm passphrase…" autocomplete="new-password" />
+          </div>
+          <div id="hide-pw-match" class="step-inline-hint hidden"></div>
         </div>
       </div>
+
 
       <!-- Output file name list (dynamic) -->
       <div id="output-names-section" class="hidden">
@@ -132,6 +253,11 @@
         <button class="btn-action" id="btn-stitch">&#128274; Encrypt &amp; Save</button>
       </div>
 
+      <!-- Post-encrypt summary (shown after completion) -->
+      <div id="encrypt-done-banner" class="encrypt-done-banner hidden">
+        <span id="encrypt-done-text"></span>
+      </div>
+
       <!-- Progress -->
       <div id="stitch-progress" class="progress-area hidden">
         <div class="progress-bar-wrap"><div class="progress-bar" id="stitch-bar"></div></div>
@@ -141,6 +267,7 @@
 
     </div><!-- /card -->
   </main>
+
 
   <!-- ═══════════════════════════════════
        TAB 2 — OPEN VAULT
@@ -189,12 +316,53 @@
           <span id="gallery-count">0 files</span>
           <input type="text" id="search-box" class="search-box" placeholder="&#128269; Search…" />
         </div>
+        <!-- Type filter chips -->
+        <div class="type-filter-chips" id="type-filter-chips">
+          <button class="type-chip active" data-type="all">All</button>
+          <button class="type-chip" data-type="video">&#127916; Video</button>
+          <button class="type-chip" data-type="image">&#128247; Image</button>
+          <button class="type-chip" data-type="audio">&#127925; Audio</button>
+          <button class="type-chip" data-type="doc">&#128196; Docs</button>
+        </div>
         <div class="view-toggle">
           <button class="view-btn active" id="btn-grid-view" title="Grid">&#9783;</button>
           <button class="view-btn" id="btn-list-view" title="List">&#9776;</button>
         </div>
+        <button class="btn-primary btn-sm" id="btn-toggle-inline-cpw" title="Change password for this vault">&#128273; Change Password</button>
         <button class="btn-lock" id="btn-lock-vault">&#128274; Lock &amp; Clear</button>
       </div>
+
+      <!-- Inline Change Password (collapsed by default) -->
+      <div id="inline-cpw-panel" class="inline-cpw hidden">
+        <div class="inline-cpw-title">&#128273; Change Vault Password</div>
+        <p class="inline-cpw-desc">Changes the password on all <strong id="inline-cpw-count">0</strong> vault image(s) currently open. Saves new copies to a folder you choose.</p>
+        <div class="inline-cpw-fields">
+          <div class="password-wrap">
+            <input type="password" id="inline-cpw-old" class="input-text" placeholder="Current password…" />
+            <button class="btn-icon" id="toggle-inline-cpw-old">&#128065;</button>
+          </div>
+          <div class="password-wrap">
+            <input type="password" id="inline-cpw-new" class="input-text" placeholder="New password…" />
+            <button class="btn-icon" id="toggle-inline-cpw-new">&#128065;</button>
+          </div>
+          <div class="password-wrap">
+            <input type="password" id="inline-cpw-confirm" class="input-text" placeholder="Confirm new password…" />
+          </div>
+        </div>
+        <div class="btn-row" style="margin-top:14px;">
+          <button class="btn-primary" id="btn-inline-cpw-folder">&#128193; Select Output Folder</button>
+          <div id="inline-cpw-folder-status" class="folder-status" style="flex:1;"></div>
+        </div>
+        <div class="action-row" style="justify-content:flex-start;margin-top:12px;">
+          <button class="btn-action" id="btn-inline-cpw-go">&#128260; Apply New Password</button>
+        </div>
+        <div id="inline-cpw-progress" class="progress-area hidden" style="margin-top:16px;">
+          <div class="progress-bar-wrap"><div class="progress-bar" id="inline-cpw-bar"></div></div>
+          <div class="progress-label" id="inline-cpw-label">Processing…</div>
+          <div id="inline-cpw-results" class="stitch-results"></div>
+        </div>
+      </div>
+
       <div id="file-grid" class="file-grid"></div>
     </div>
   </main>
@@ -316,7 +484,9 @@
       <!-- Keyboard hints -->
       <div class="kbd-hints">
         <span class="kbd"><span class="key">Space</span> Play/Pause</span>
-        <span class="kbd"><span class="key">← →</span> Navigate</span>
+        <span class="kbd"><span class="key">← →</span> Skip 10s (video) / Navigate (image)</span>
+        <span class="kbd"><span class="key">↑ ↓</span> Volume</span>
+        <span class="kbd"><span class="key">N / B</span> Next / Back file</span>
         <span class="kbd"><span class="key">M</span> Mute</span>
         <span class="kbd"><span class="key">F</span> Fullscreen</span>
         <span class="kbd"><span class="key">P</span> PiP</span>
@@ -335,8 +505,29 @@
         </div>
       </div>
 
-      <!-- Actual content (hidden while loading) -->
-      <div class="viewer-content" id="viewer-content"></div>
+      <!-- Auto-next countdown overlay -->
+      <div id="autonext-overlay" class="autonext-overlay hidden">
+        <div class="autonext-inner">
+          <div class="autonext-label">Next up</div>
+          <div class="autonext-name" id="autonext-name"></div>
+          <div class="autonext-countdown" id="autonext-countdown">5</div>
+          <button class="btn-ghost" id="btn-autonext-cancel">Cancel</button>
+        </div>
+      </div>
+
+      <!-- Content + skip buttons row -->
+      <div class="viewer-body">
+        <button class="skip-btn skip-left" id="btn-skip-back" title="Skip back (←)">&#8249;<div class="skip-label" id="skip-back-label">10s</div></button>
+        <div class="viewer-content" id="viewer-content"></div>
+        <button class="skip-btn skip-right" id="btn-skip-fwd" title="Skip forward (→)">&#8250;<div class="skip-label" id="skip-fwd-label">10s</div></button>
+      </div>
+
+      <!-- Volume bar (shows on ↑↓ key press) -->
+      <div id="volume-bar" class="volume-bar hidden">
+        <span id="volume-icon">🔊</span>
+        <div class="progress-bar-wrap" style="flex:1"><div class="progress-bar" id="volume-fill"></div></div>
+        <span id="volume-pct">100%</span>
+      </div>
 
       <!-- Navigation -->
       <div class="viewer-nav">
@@ -351,7 +542,45 @@
     </div>
   </div>
 
+  <!-- Global drag-and-drop overlay -->
+  <div id="drag-overlay" class="drag-overlay hidden">
+    <div class="drag-overlay-inner">
+      <div class="drag-icon">📂</div>
+      <div class="drag-title" id="drag-title">Drop files to hide</div>
+      <div class="drag-sub" id="drag-sub">They'll be added to your secret files list</div>
+    </div>
+  </div>
+
+  <!-- Keyboard shortcuts modal -->
+  <div id="kbd-modal" class="kbd-modal hidden">
+    <div class="kbd-modal-inner">
+      <div class="kbd-modal-header">
+        <span>⌨️ Keyboard Shortcuts</span>
+        <button id="btn-close-kbd" class="btn-icon">✕</button>
+      </div>
+      <div class="kbd-grid">
+        <div class="kbd-section-title">Viewer Navigation</div>
+        <div class="kbd-row"><kbd>N</kbd> <span>Next file</span></div>
+        <div class="kbd-row"><kbd>B</kbd> <span>Previous file</span></div>
+        <div class="kbd-row"><kbd>←</kbd><kbd>→</kbd> <span>Skip video / navigate image</span></div>
+        <div class="kbd-row"><kbd>↑</kbd><kbd>↓</kbd> <span>Volume up / down</span></div>
+        <div class="kbd-section-title">Playback</div>
+        <div class="kbd-row"><kbd>Space</kbd> <span>Play / Pause</span></div>
+        <div class="kbd-row"><kbd>M</kbd> <span>Mute toggle</span></div>
+        <div class="kbd-row"><kbd>F</kbd> <span>Fullscreen</span></div>
+        <div class="kbd-row"><kbd>P</kbd> <span>Picture in Picture</span></div>
+        <div class="kbd-section-title">App</div>
+        <div class="kbd-row"><kbd>Esc</kbd> <span>Close viewer / settings</span></div>
+        <div class="kbd-row"><kbd>?</kbd> <span>This help screen</span></div>
+        <div class="kbd-section-title">Mobile</div>
+        <div class="kbd-row"><span>Swipe ←→</span> <span>Navigate files</span></div>
+        <div class="kbd-row"><span>Swipe ↓</span> <span>Close viewer</span></div>
+      </div>
+    </div>
+  </div>
+
   <div id="toast" class="toast hidden"></div>
   <script src="app.js"></script>
 </body>
 </html>
+
