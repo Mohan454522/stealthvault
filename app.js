@@ -693,20 +693,33 @@ document.addEventListener('DOMContentLoaded', () => {
 // ═══════════════════════════════════════════════════════════════════════
 let secretFiles = [], dummyFile = null, outputDirHandle = null, hideMode = 'one-to-one';
 
-// Pick files
+// Pick files — REPLACE selection (fresh start)
 document.getElementById('btn-pick-secret-files').addEventListener('click', () => document.getElementById('input-secret-files').click());
 document.getElementById('input-secret-files').addEventListener('change', function() {
+  secretFiles = []; // Replace mode: clear first
   addSecretFiles(Array.from(this.files)); this.value = '';
 });
 
-// Pick folder (recursively)
+// Add More — APPEND to existing selection without clearing
+document.getElementById('btn-add-more-files').addEventListener('click', () => document.getElementById('input-add-more-files').click());
+document.getElementById('input-add-more-files').addEventListener('change', function() {
+  const before = secretFiles.length;
+  addSecretFiles(Array.from(this.files)); this.value = '';
+  const added = secretFiles.length - before;
+  if (added > 0) toast(`➕ Added ${added} file(s). Total: ${secretFiles.length}`, 'success');
+  else toast('Those files are already in the list.', 'error');
+});
+
+// Pick folder (recursively) — always APPENDS
 document.getElementById('btn-pick-secret-folder').addEventListener('click', async () => {
   try {
     const dir = await window.showDirectoryPicker({mode:'read'});
     toast('Scanning folder…');
     const files = await scanDir(dir);
+    const before = secretFiles.length;
     addSecretFiles(files);
-    toast(`Added ${files.length} file(s) from "${dir.name}".`, 'success');
+    const added = secretFiles.length - before;
+    toast(`Added ${added} file(s) from "${dir.name}". Total: ${secretFiles.length}`, 'success');
   } catch(e) { if (e.name!=='AbortError') toast('Error: '+e.message,'error'); }
 });
 
@@ -719,7 +732,6 @@ async function scanDir(dh, prefix='') {
   for await (const [name, handle] of dh.entries()) {
     if (handle.kind === 'file') {
       const file = await handle.getFile();
-      // Create a new File object so the name includes relative path context if needed
       out.push(new File([file], name, {type:file.type, lastModified:file.lastModified}));
     } else {
       out.push(...await scanDir(handle, prefix ? prefix+'/'+name : name));
@@ -756,7 +768,8 @@ document.getElementById('input-dummy').addEventListener('change', function() {
   const dn = document.getElementById('dummy-name');
   const dp = document.getElementById('dummy-preview');
   if (dummyFile) {
-    dn.className = 'file-summary ok'; dn.textContent = `Selected: ${dummyFile.name} (${fmtBytes(dummyFile.size)})`;
+    dn.className = 'file-summary ok';
+    dn.textContent = `✔ ${dummyFile.name}  (${fmtBytes(dummyFile.size)})`;
     dp.innerHTML = `<img src="${URL.createObjectURL(dummyFile)}" alt="cover" />`;
   } else {
     dn.className = 'file-summary hidden'; dn.textContent = '';
@@ -764,6 +777,20 @@ document.getElementById('input-dummy').addEventListener('change', function() {
   }
   renderOutputNames();
 });
+
+// Live password-match hint
+document.getElementById('hide-pw-confirm').addEventListener('input', function() {
+  const hint = document.getElementById('hide-pw-match');
+  const pw1  = document.getElementById('hide-pw').value;
+  if (!this.value) { hint.classList.add('hidden'); hint.className = 'step-inline-hint hidden'; return; }
+  hint.classList.remove('hidden');
+  if (this.value === pw1) {
+    hint.className = 'step-inline-hint ok'; hint.textContent = '✔ Passphrases match';
+  } else {
+    hint.className = 'step-inline-hint err'; hint.textContent = '✖ Passphrases do not match';
+  }
+});
+
 
 // Pick output folder
 document.getElementById('btn-pick-output-folder').addEventListener('click', async () => {
@@ -815,11 +842,13 @@ document.getElementById('btn-stitch').addEventListener('click', async () => {
   const btn = document.getElementById('btn-stitch'); btn.disabled = true;
   const pArea = document.getElementById('stitch-progress'); pArea.classList.remove('hidden');
   document.getElementById('stitch-results').innerHTML = '';
+  document.getElementById('encrypt-done-banner').classList.add('hidden'); // reset
 
   const prog    = makeProgress(document.getElementById('stitch-bar'), document.getElementById('stitch-label'));
   const dummyBuf = (await readBlob(dummyFile)).buffer;
   const batches  = hideMode==='all-in-one' ? [[...secretFiles]] : secretFiles.map(f=>[f]);
   const outNames = hideMode==='all-in-one' ? [getOutName('bundle')] : secretFiles.map((_,i)=>getOutName(i));
+  let   okCount  = 0;
 
   for (let i=0; i<batches.length; i++) {
     const batch = batches[i], name = outNames[i];
@@ -828,10 +857,11 @@ document.getElementById('btn-stitch').addEventListener('click', async () => {
     try {
       const outFH = await outputDirHandle.getFileHandle(name, {create:true});
       await vaultEncrypt(batch, pw1, dummyBuf, outFH, (done, tot) => {
-        if (done === null) prog.finalizing();  // signal from vaultEncrypt before close()
+        if (done === null) prog.finalizing();
         else               prog.update(done, tot);
       });
       addResultRow(true, `${name}  (${fmtBytes(total)})  ✔ saved to "${outputDirHandle.name}"`);
+      okCount++;
     } catch(err) {
       addResultRow(false, `${name}: ${err.message}`);
     }
@@ -839,8 +869,17 @@ document.getElementById('btn-stitch').addEventListener('click', async () => {
 
   prog.finish(`✔ All ${batches.length} file(s) encrypted and saved!`);
   btn.disabled = false;
+
+  // Show success banner
+  if (okCount > 0) {
+    const banner = document.getElementById('encrypt-done-banner');
+    const text   = document.getElementById('encrypt-done-text');
+    text.textContent = `✔ ${okCount} vault image${okCount!==1?'s':''} saved to "${outputDirHandle.name}". Open that folder to find your encrypted files.`;
+    banner.classList.remove('hidden');
+  }
   toast('Encryption complete!', 'success');
 });
+
 
 function addResultRow(ok, msg) {
   const d = document.createElement('div');
@@ -1614,10 +1653,113 @@ document.addEventListener('keydown', e => {
 });
 
 // ── Fullscreen navigation fix ──
-// When in fullscreen and navigating, stay in fullscreen — swap src, don't re-enter
 document.addEventListener('fullscreenchange', () => {
-  // Track fullscreen state so navigateTo can decide whether to re-enter
   window._svFullscreen = !!document.fullscreenElement;
+});
+
+// ═══════════════════════════════════════════════════════════════════════
+// GALLERY TYPE FILTER
+// ═══════════════════════════════════════════════════════════════════════
+let activeTypeFilter = 'all';
+
+function matchesTypeFilter(item, filterType) {
+  switch (filterType) {
+    case 'video': return isVid(item.name);
+    case 'image': return isImg(item.name);
+    case 'audio': return isAud(item.name);
+    case 'doc':   return isPDF(item.name) || isTxt(item.name);
+    default:      return true; // 'all'
+  }
+}
+
+function applyFilters() {
+  const searchVal = (document.getElementById('search-box')?.value || '').toLowerCase();
+  filteredItems = unlockedItems.filter(f =>
+    f.name.toLowerCase().includes(searchVal) && matchesTypeFilter(f, activeTypeFilter)
+  );
+  renderGallery();
+}
+
+// Wire type filter chips
+document.getElementById('type-filter-chips')?.addEventListener('click', e => {
+  const chip = e.target.closest('.type-chip'); if (!chip) return;
+  document.querySelectorAll('.type-chip').forEach(c => c.classList.remove('active'));
+  chip.classList.add('active');
+  activeTypeFilter = chip.dataset.type;
+  applyFilters();
+});
+
+// Update search handler to use combined filter
+document.getElementById('search-box').removeEventListener('input', null); // detach old handler
+document.getElementById('search-box').addEventListener('input', applyFilters);
+
+// Reset filter on vault lock
+document.getElementById('btn-lock-vault').addEventListener('click', () => {
+  activeTypeFilter = 'all';
+  document.querySelectorAll('.type-chip').forEach((c, i) => c.classList.toggle('active', i === 0));
+}, { capture: true }); // fires before the main lock handler
+
+// ═══════════════════════════════════════════════════════════════════════
+// MOBILE SWIPE GESTURES
+// ═══════════════════════════════════════════════════════════════════════
+(function initSwipe() {
+  const container = document.getElementById('viewer-modal');
+  if (!container) return;
+
+  let touchStartX = 0, touchStartY = 0, touchStartTime = 0;
+  const SWIPE_THRESHOLD  = 60;   // px to count as a swipe
+  const SWIPE_MAX_TIME   = 500;  // ms — faster than this counts as a swipe
+  const SWIPE_DOWN_MIN   = 80;   // px down to close viewer
+  const SWIPE_RATIO      = 1.5;  // horizontal must dominate for left/right swipe
+
+  container.addEventListener('touchstart', e => {
+    if (e.touches.length !== 1) return;
+    touchStartX    = e.touches[0].clientX;
+    touchStartY    = e.touches[0].clientY;
+    touchStartTime = Date.now();
+  }, { passive: true });
+
+  container.addEventListener('touchend', e => {
+    if (e.changedTouches.length !== 1) return;
+    const dx   = e.changedTouches[0].clientX - touchStartX;
+    const dy   = e.changedTouches[0].clientY - touchStartY;
+    const dt   = Date.now() - touchStartTime;
+    const absDx = Math.abs(dx), absDy = Math.abs(dy);
+
+    if (dt > SWIPE_MAX_TIME) return; // too slow
+
+    // Swipe down → close viewer
+    if (dy > SWIPE_DOWN_MIN && absDy > absDx) {
+      closeViewer(); return;
+    }
+
+    // Horizontal swipe — only when NOT on a video (scrolling inside controls)
+    const isOnVideo = e.target.closest('video') !== null;
+    if (isOnVideo) return;
+
+    if (absDx > SWIPE_THRESHOLD && absDx > absDy * SWIPE_RATIO) {
+      cancelAutoNext();
+      if (dx < 0) {
+        // Swipe left → next
+        if (curIdx < filteredItems.length - 1) navigateTo(curIdx + 1);
+      } else {
+        // Swipe right → prev
+        if (curIdx > 0) navigateTo(curIdx - 1);
+      }
+    }
+  }, { passive: true });
+})();
+
+// ═══════════════════════════════════════════════════════════════════════
+// ENTER KEY SHORTCUTS
+// ═══════════════════════════════════════════════════════════════════════
+// Enter on password field triggers unlock
+document.getElementById('open-pw')?.addEventListener('keydown', e => {
+  if (e.key === 'Enter') document.getElementById('btn-unlock')?.click();
+});
+// Enter on hide-pw-confirm triggers encrypt
+document.getElementById('hide-pw-confirm')?.addEventListener('keydown', e => {
+  if (e.key === 'Enter') document.getElementById('btn-stitch')?.click();
 });
 
 // ═══════════════════════════════════════════════════════════════════════

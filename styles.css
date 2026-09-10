@@ -252,9 +252,36 @@ nav {
 }
 .hidden { display: none !important; }
 
+/* ── Step inline validation hint ── */
+.step-inline-hint {
+  margin-top: 8px; font-size: 12px; font-family: var(--mono); padding: 6px 10px;
+  border-radius: 6px; font-weight: 600;
+}
+.step-inline-hint.ok  { color: var(--success); background: rgba(0,232,150,0.08); }
+.step-inline-hint.err { color: var(--error);   background: rgba(255,58,110,0.08); }
+
+/* ── Post-encrypt done banner ── */
+.encrypt-done-banner {
+  margin-top: 16px; padding: 14px 18px; border-radius: 10px;
+  background: rgba(0,232,150,0.08); border: 1px solid rgba(0,232,150,0.25);
+  color: var(--success); font-size: 13px; font-weight: 600;
+  display: flex; align-items: center; gap: 10px;
+  animation: slide-down 0.25s ease;
+}
+
 /* ══ CHANGE PASSWORD — 3 pw boxes ══ */
 .pw-triple { display: flex; flex-direction: column; gap: 14px; }
 .pw-triple-item label { display: block; font-size: 12px; color: var(--text2); margin-bottom: 6px; font-weight: 600; }
+
+/* ── Type filter chips in gallery ── */
+.type-filter-chips { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+.type-chip {
+  padding: 5px 12px; border-radius: 20px; border: 1px solid var(--border);
+  background: var(--surface2); color: var(--text2); cursor: pointer;
+  font-size: 12px; font-weight: 600; transition: all var(--t);
+}
+.type-chip:hover  { border-color: var(--border2); color: var(--text); }
+.type-chip.active { border-color: var(--accent2); background: var(--adim); color: var(--accent); }
 
 /* ══ GALLERY ══ */
 .gallery-toolbar {

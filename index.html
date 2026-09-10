@@ -139,29 +139,31 @@
     <div class="card">
 
       <!-- STEP 1: Secret Files -->
-      <div class="step">
+      <div class="step" id="step-secrets">
         <div class="step-num">01</div>
         <div class="step-body">
           <h3>Select Files to Hide</h3>
           <p>Add individual files or a whole folder. Mix any file types — videos, photos, PDFs, anything.</p>
           <div class="btn-row">
             <button class="btn-primary" id="btn-pick-secret-files">&#128196; Select Files</button>
+            <button class="btn-primary" id="btn-add-more-files">&#43; Add More</button>
             <button class="btn-primary" id="btn-pick-secret-folder">&#128193; Select Folder</button>
             <button class="btn-ghost" id="btn-clear-secrets">&#215; Clear All</button>
           </div>
           <input type="file" id="input-secret-files" multiple hidden />
+          <input type="file" id="input-add-more-files" multiple hidden />
           <div id="secrets-list" class="file-list"></div>
           <div id="secrets-summary" class="file-summary hidden"></div>
         </div>
       </div>
 
       <!-- STEP 2: Cover Image -->
-      <div class="step">
+      <div class="step" id="step-cover">
         <div class="step-num">02</div>
         <div class="step-body">
           <h3>Select Cover Image</h3>
-          <p>An innocent-looking photo that anyone opening the file will see. Your files are hidden behind it.</p>
-          <button class="btn-primary" id="btn-pick-dummy">&#128247; Choose Image</button>
+          <p>An innocent-looking JPEG or PNG. Anyone who opens the file will see only this photo.</p>
+          <button class="btn-primary" id="btn-pick-dummy">&#128247; Choose Cover Image</button>
           <input type="file" id="input-dummy" accept="image/jpeg,image/jpg,image/png" hidden />
           <div id="dummy-name" class="file-summary hidden"></div>
           <div id="dummy-preview" class="dummy-preview"></div>
@@ -173,25 +175,19 @@
         <div class="step-num">03</div>
         <div class="step-body">
           <h3>Bundling Mode</h3>
-          <p>How should the files be packaged?</p>
+          <p>How many vault images should be created?</p>
           <div class="mode-cards">
             <label class="mode-card active" data-mode="one-to-one">
               <input type="radio" name="hide-mode" value="one-to-one" checked hidden />
               <div class="mode-icon">&#128196;</div>
-              <div class="mode-label">One file per image</div>
-              <div class="mode-desc">Each file gets its own disguised image. 10 files = 10 images.</div>
+              <div class="mode-label">One File Per Image</div>
+              <div class="mode-desc">Each secret file gets its own disguised image. Easiest to manage.</div>
             </label>
             <label class="mode-card" data-mode="all-in-one">
               <input type="radio" name="hide-mode" value="all-in-one" hidden />
-              <div class="mode-icon">&#128218;</div>
-              <div class="mode-label">All files in one image</div>
-              <div class="mode-desc">All files bundled into a single disguised image. Browse all from one vault.</div>
-            </label>
-            <label class="mode-card" data-mode="same-dummy">
-              <input type="radio" name="hide-mode" value="same-dummy" hidden />
-              <div class="mode-icon">&#128084;</div>
-              <div class="mode-label">Each file, same cover</div>
-              <div class="mode-desc">Each file gets a copy of the same cover image. Named cover_001.jpg, cover_002.jpg…</div>
+              <div class="mode-icon">&#128220;</div>
+              <div class="mode-label">All Files in One Image</div>
+              <div class="mode-desc">Everything bundled into a single image. One file, one password.</div>
             </label>
           </div>
         </div>
@@ -221,6 +217,7 @@
           <div class="password-wrap" style="margin-top:10px;">
             <input type="password" id="hide-pw-confirm" class="input-text" placeholder="Confirm passphrase…" />
           </div>
+          <div id="hide-pw-match" class="step-inline-hint hidden"></div>
         </div>
       </div>
 
@@ -235,6 +232,11 @@
         <button class="btn-action" id="btn-stitch">&#128274; Encrypt &amp; Save</button>
       </div>
 
+      <!-- Post-encrypt summary (shown after completion) -->
+      <div id="encrypt-done-banner" class="encrypt-done-banner hidden">
+        <span id="encrypt-done-text"></span>
+      </div>
+
       <!-- Progress -->
       <div id="stitch-progress" class="progress-area hidden">
         <div class="progress-bar-wrap"><div class="progress-bar" id="stitch-bar"></div></div>
@@ -244,6 +246,7 @@
 
     </div><!-- /card -->
   </main>
+
 
   <!-- ═══════════════════════════════════
        TAB 2 — OPEN VAULT
@@ -291,6 +294,14 @@
         <div class="gallery-info">
           <span id="gallery-count">0 files</span>
           <input type="text" id="search-box" class="search-box" placeholder="&#128269; Search…" />
+        </div>
+        <!-- Type filter chips -->
+        <div class="type-filter-chips" id="type-filter-chips">
+          <button class="type-chip active" data-type="all">All</button>
+          <button class="type-chip" data-type="video">&#127916; Video</button>
+          <button class="type-chip" data-type="image">&#128247; Image</button>
+          <button class="type-chip" data-type="audio">&#127925; Audio</button>
+          <button class="type-chip" data-type="doc">&#128196; Docs</button>
         </div>
         <div class="view-toggle">
           <button class="view-btn active" id="btn-grid-view" title="Grid">&#9783;</button>
