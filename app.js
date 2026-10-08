@@ -1504,9 +1504,27 @@ if (togAutoplay) {
   });
 }
 
-document.getElementById('btn-open-settings').addEventListener('click', openSettings);
+function openMenu() {
+  document.getElementById('menu-overlay').classList.remove('hidden');
+  document.getElementById('menu-panel').classList.add('open');
+}
+function closeMenu() {
+  document.getElementById('menu-overlay').classList.add('hidden');
+  document.getElementById('menu-panel').classList.remove('open');
+}
+document.getElementById('btn-open-menu').addEventListener('click', openMenu);
+document.getElementById('btn-close-menu').addEventListener('click', closeMenu);
+document.getElementById('menu-overlay').addEventListener('click', closeMenu);
+
+document.getElementById('btn-open-settings').addEventListener('click', () => { closeMenu(); openSettings(); });
 document.getElementById('btn-close-settings').addEventListener('click', closeSettings);
 document.getElementById('settings-overlay').addEventListener('click', closeSettings);
+
+const btnShortcuts = document.getElementById('btn-shortcuts');
+if (btnShortcuts) {
+  // We'll replace the existing event listener by cloning, but it's easier to just add an extra click handler to close the menu
+  btnShortcuts.addEventListener('click', closeMenu);
+}
 document.getElementById('btn-reset-settings').addEventListener('click', () => {
   CONFIG = { ...CONFIG_DEFAULTS };
   saveConfig(CONFIG);

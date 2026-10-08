@@ -64,14 +64,15 @@ nav {
   background: rgba(8,12,20,0.94); backdrop-filter: blur(16px);
   border-bottom: 1px solid var(--border);
 }
-.nav-inner { display: flex; align-items: center; justify-content: space-between; padding: 14px 24px; }
-.logo { font-size: 15px; font-weight: 700; letter-spacing: 0.15em; color: var(--text); }
+.nav-inner { display: flex; align-items: center; justify-content: space-between; padding: 14px 24px; flex-wrap: wrap; gap: 12px; }
+.logo { font-size: 15px; font-weight: 700; letter-spacing: 0.15em; color: var(--text); order: 1; }
 .logo span { color: var(--accent); }
-.nav-tabs { display: flex; gap: 4px; background: var(--surface); border-radius: 8px; padding: 4px; border: 1px solid var(--border); }
+.nav-tabs { display: flex; gap: 4px; background: var(--surface); border-radius: 8px; padding: 4px; border: 1px solid var(--border); order: 2; overflow-x: auto; }
 .tab-btn {
   padding: 7px 18px; border-radius: 6px; border: none;
   background: transparent; color: var(--text2); cursor: pointer;
   font-size: 13px; font-weight: 600; letter-spacing: 0.04em; transition: all var(--t);
+  white-space: nowrap;
 }
 .tab-btn:hover { color: var(--text); }
 .tab-btn.active { background: var(--adim); color: var(--accent); border: 1px solid var(--border2); }
@@ -80,7 +81,7 @@ nav {
   background: var(--surface2); border: 1px solid var(--border);
   border-radius: 5px; padding: 3px 10px;
 }
-.nav-right { display: flex; align-items: center; gap: 6px; }
+.nav-right { display: flex; align-items: center; gap: 6px; order: 3; }
 .nav-ext-link {
   padding: 6px 8px; border-radius: 7px; border: none; background: transparent;
   color: var(--text2); font-size: 16px; cursor: pointer; text-decoration: none;
@@ -658,7 +659,10 @@ nav {
   .output-name-row { grid-template-columns: 1fr; }
   .arrow { display: none; }
   .viewer-container { width: 100vw; max-height: 100vh; border-radius: 0; }
-  .nav-inner { flex-wrap: wrap; gap: 10px; }
+  .nav-inner { padding: 12px 16px; }
+  .nav-tabs { order: 3; width: 100%; justify-content: flex-start; }
   .skip-btn { width: 36px; font-size: 28px; opacity: 1; }
   .settings-panel { width: 100vw; }
 }
+
+.menu-item:hover { border-color: var(--accent2); background: var(--adim) !important; color: var(--accent) !important; }

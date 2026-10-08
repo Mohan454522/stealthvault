@@ -7,10 +7,7 @@
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
-  <!-- DEV BANNER (Only on dev branch) -->
-  <div style="background-color: #ff0044; color: white; text-align: center; padding: 6px; font-weight: bold; letter-spacing: 2px; font-size: 13px; z-index: 99999; position: relative;">
-    🚧 STAGING / DEV ENVIRONMENT 🚧
-  </div>
+  <!-- Ambient background -->
   <div class="grid-bg"></div>
   <div class="orb1"></div><div class="orb2"></div>
 
@@ -24,18 +21,46 @@
         <button class="tab-btn" data-tab="changepw">Change Password</button>
       </div>
       <div class="nav-right">
-        <a href="changelog.html" class="nav-ext-link" title="Changelog" target="_blank">📋</a>
-        <a href="status.html"    class="nav-ext-link" title="Status" target="_blank">🟢</a>
-        <button class="nav-ext-link" id="btn-shortcuts" title="Keyboard shortcuts (?)">⌨️</button>
         <div id="worker-badge" class="worker-badge">loading…</div>
-        <button class="btn-settings" id="btn-open-settings" title="Settings">⚙️</button>
+        <button class="btn-settings" id="btn-open-menu" title="Menu" style="font-size: 20px; font-weight: bold; line-height: 1;">⋮</button>
       </div>
     </div>
   </nav>
 
+  <!-- ══ MENU SIDEBAR ══ -->
+  <div id="menu-overlay" class="settings-overlay hidden"></div>
+  <div id="menu-panel" class="settings-panel">
+    <div class="settings-header">
+      <span class="settings-title">Menu</span>
+      <button class="btn-icon" id="btn-close-menu">✕</button>
+    </div>
+    <div class="settings-section" style="padding: 12px;">
+      <a href="admin.html" class="menu-item" style="display:flex; align-items:center; gap:12px; padding:12px; margin-bottom:8px; border-radius:8px; text-decoration:none; color:var(--text); background:var(--surface2); transition:all 0.2s ease;">
+        <span style="font-size:18px;">👑</span>
+        <span style="font-weight:600;">Admin Center</span>
+      </a>
+      <button id="btn-open-settings" class="menu-item" style="width:100%; display:flex; align-items:center; gap:12px; padding:12px; margin-bottom:8px; border-radius:8px; border:none; text-align:left; color:var(--text); background:var(--surface2); cursor:pointer; transition:all 0.2s ease;">
+        <span style="font-size:18px;">⚙️</span>
+        <span style="font-weight:600; font-family:var(--font);">App Settings</span>
+      </button>
+      <button id="btn-shortcuts" class="menu-item" style="width:100%; display:flex; align-items:center; gap:12px; padding:12px; margin-bottom:8px; border-radius:8px; border:none; text-align:left; color:var(--text); background:var(--surface2); cursor:pointer; transition:all 0.2s ease;">
+        <span style="font-size:18px;">⌨️</span>
+        <span style="font-weight:600; font-family:var(--font);">Keyboard Shortcuts</span>
+      </button>
+      <a href="changelog.html" target="_blank" class="menu-item" style="display:flex; align-items:center; gap:12px; padding:12px; margin-bottom:8px; border-radius:8px; text-decoration:none; color:var(--text); background:var(--surface2); transition:all 0.2s ease;">
+        <span style="font-size:18px;">📋</span>
+        <span style="font-weight:600;">Changelog</span>
+      </a>
+      <a href="status.html" target="_blank" class="menu-item" style="display:flex; align-items:center; gap:12px; padding:12px; margin-bottom:8px; border-radius:8px; text-decoration:none; color:var(--text); background:var(--surface2); transition:all 0.2s ease;">
+        <span style="font-size:18px;">🟢</span>
+        <span style="font-weight:600;">System Status</span>
+      </a>
+    </div>
+  </div>
+
   <!-- ══ SETTINGS PANEL ══ -->
   <div id="settings-overlay" class="settings-overlay hidden"></div>
-  <div id="settings-panel" class="settings-panel hidden">
+  <div id="settings-panel" class="settings-panel">
     <div class="settings-header">
       <span class="settings-title">⚙️ Settings</span>
       <button class="btn-icon" id="btn-close-settings">✕</button>
