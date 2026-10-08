@@ -254,8 +254,8 @@ async function vaultEncrypt(files, password, coverArrayBuf, outFH, onProgress) {
   await POOL.rst();
 
   // 2. Compute header size (needed for trailer before any writing)
-  //    MAGIC(8) + SALT(16) + CHUNK_SIZE(4) + FILE_COUNT(4) + Σ[META_ENC_LEN(4) + META_ENC]
-  let headerSize = MAGIC.length + 16 + 4 + 4; // extra 4 = stored CHUNK_SIZE field
+  //    MAGIC(8) + SALT(16) + FILE_COUNT(4) + Σ[META_ENC_LEN(4) + META_ENC]
+  let headerSize = MAGIC.length + 16 + 4;
   for (const me of metaEncs) headerSize += 4 + me.length;
 
   const coverU8   = new Uint8Array(coverArrayBuf);
@@ -268,10 +268,9 @@ async function vaultEncrypt(files, password, coverArrayBuf, outFH, onProgress) {
   // Write cover image
   await writable.write(coverU8);
 
-  // Write payload header: MAGIC + SALT + CHUNK_SIZE (stored!) + FILE_COUNT + per-file metadata
+  // Write payload header: MAGIC + SALT + FILE_COUNT + per-file metadata
   await writable.write(MAGIC);
   await writable.write(salt);
-  await writable.write(wu32(chunkSz));   // ← stored chunk size — always read back by decryptor
   await writable.write(wu32(files.length));
   for (const me of metaEncs) {
     await writable.write(wu32(me.length));
@@ -343,15 +342,9 @@ async function vaultReadMeta(imageFile, password) {
   }
   off += MAGIC.length;
 
-  // ── Step 4: read salt → stored chunk size → derive key → decrypt metadata
+  // ── Step 4: read salt → derive key → decrypt metadata
   const salt    = hdr.slice(off, off+16); off += 16;
   const saltArr = Array.from(salt);
-
-  // Read the chunk size stored at encryption time — NOT the current app setting.
-  // This guarantees correct decryption even if the user later changes the setting.
-  const storedChunkSz = ru32(hdr, off); off += 4;
-  if (!CHUNK_SIZE_OPTIONS.includes(storedChunkSz) && storedChunkSz !== 64*1024*1024)
-    throw new Error('Corrupted vault: unrecognised chunk size ' + storedChunkSz);
 
   await POOL.init(password, saltArr);
 
@@ -371,8 +364,8 @@ async function vaultReadMeta(imageFile, password) {
       await POOL.rst();
       throw new Error('Wrong password');
     }
-    // Store storedChunkSz on each item — decryptFull and prefetch use this
-    items.push({ name:meta.name, mime:meta.mime||getMime(meta.name), size:meta.size, salt:saltArr, chunkSz:storedChunkSz, imageFile });
+    // Store chunk size on each item from current global settings — decryptFull and prefetch use this
+    items.push({ name:meta.name, mime:meta.mime||getMime(meta.name), size:meta.size, salt:saltArr, chunkSz:getChunkSz(), imageFile });
   }
   await POOL.rst();
 
