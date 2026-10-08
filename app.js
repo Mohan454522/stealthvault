@@ -1269,12 +1269,19 @@ async function loadViewerContent() {
   loading.classList.add('hidden');
 
   if (!url) {
-    content.innerHTML = `<div class="unsupported-file">
-      <div class="big-icon">${getIcon(f.name)}</div>
-      <p style="font-size:15px;font-weight:700;">${f.name}</p>
-      <p style="color:var(--text2);">${fmtBytes(f.size)} â€” too large to preview in browser.</p>
-      <p style="color:var(--text2);margin-top:8px;">Click <strong style="color:var(--accent)">Export</strong> to save the decrypted file to disk.</p>
-    </div>`;
+    const btnId = 'inline-export-btn-' + Date.now();
+    content.innerHTML = <div class="unsupported-file" style="gap:16px;">
+      <div class="big-icon" style="font-size:56px;">$(getIcon(f.name))</div>
+      <p style="font-size:16px;font-weight:700;margin:0;">$(.name)</p>
+      <p style="color:var(--text2);margin:0;">$(mtBytes(f.size)) — too large to preview in browser</p>
+      <button id="${btnId}" class="btn-primary" style="margin-top:8px;padding:10px 28px;font-size:15px;border-radius:10px;">
+        ?? Export &amp; Save to disk
+      </button>
+      <p style="color:var(--text2);font-size:12px;margin:0;">The file will be decrypted and saved directly to disk without using extra RAM.</p>
+    </div>;
+    document.getElementById(btnId)?.addEventListener('click', () => {
+      document.getElementById('btn-export')?.click();
+    });
     return;
   }
 
@@ -1734,6 +1741,19 @@ document.addEventListener('keydown', e => {
         document.pictureInPictureElement
           ? document.exitPictureInPicture()
           : activeMedia.requestPictureInPicture().catch(() => toast('PiP not available.', 'error'));
+      break;
+    }
+    case 'e': case 'E': {
+      e.preventDefault();
+      document.getElementById('btn-export')?.click();
+      break;
+    }
+    case 'c': case 'C': {
+      if (filteredItems[curIdx]) {
+        navigator.clipboard.writeText(filteredItems[curIdx].name)
+          .then(() => toast('?? Filename copied!', 'success'))
+          .catch(() => {});
+      }
       break;
     }
     case '?': {
