@@ -414,9 +414,10 @@ async function vaultDecryptFull(item, password, pool, onProgress) {
     // Copy results into pre-allocated output buffer
     for (let i=0; i<decPs.length; i++) {
       const plain = await decPs[i];
-      result.set(plain, writeOff);
-      writeOff += plain.length;
-      done     += plain.length;
+      const plainU8 = new Uint8Array(plain);
+      result.set(plainU8, writeOff);
+      writeOff += plain.byteLength;
+      done     += plain.byteLength;
       if (onProgress) onProgress(done, item.size);
     }
   }
@@ -467,8 +468,8 @@ async function vaultExportItem(item, password) {
     const decPs = encChunks.map(ec => POOL.dec(ec.buffer));
     for (let i=0; i<decPs.length; i++) {
       const plain = await decPs[i];
-      await writable.write(plain);   // write directly to disk
-      done += plain.length;
+      await writable.write(new Uint8Array(plain));   // write directly to disk
+      done += plain.byteLength;
       prog.update(done, item.size);
     }
   }
