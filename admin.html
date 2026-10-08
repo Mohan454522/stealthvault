@@ -732,16 +732,75 @@
     <div class="card">
       <div class="setting-row">
         <div>
-          <label>announcement.json</label>
-          <div class="setting-desc">Edit the JSON payload below. Note: You must commit this file to Git for users to see it.</div>
+          <label>Announcement ID</label>
+          <div class="setting-desc">Bump this (e.g. ann-002 to ann-003) to show the popup to returning users again.</div>
         </div>
+        <input type="text" id="anno-id" value="ann-001" style="width:200px;background:var(--surface);color:var(--text);border:1px solid var(--border);padding:6px 10px;border-radius:4px;" />
       </div>
-      <textarea id="anno-json-editor" style="width:100%;height:300px;background:#0d0d0d;color:#10b981;border:1px solid #333;border-radius:6px;padding:12px;font-family:monospace;white-space:pre;"></textarea>
-      <div style="display:flex;gap:12px;margin-top:16px;">
-        <button id="btn-anno-preview" class="btn">Preview Popup</button>
-        <button id="btn-anno-save" class="btn" style="background:var(--accent);color:#000;border:none;">Save Locally</button>
+      <div class="setting-row">
+        <div><label>Status</label></div>
+        <select id="anno-active" style="width:200px;background:var(--surface);color:var(--text);border:1px solid var(--border);padding:6px;border-radius:4px;">
+          <option value="true">● Active</option>
+          <option value="false">○ Off</option>
+        </select>
+      </div>
+      <div class="setting-row">
+        <div><label>Dismiss Mode</label></div>
+        <select id="anno-mode" style="width:200px;background:var(--surface);color:var(--text);border:1px solid var(--border);padding:6px;border-radius:4px;">
+          <option value="every-visit">Every Visit (always shows)</option>
+          <option value="session">Once Per Session</option>
+          <option value="permanent">Once Ever</option>
+        </select>
+      </div>
+      <div class="setting-row">
+        <div><label>Size</label></div>
+        <select id="anno-size" style="width:200px;background:var(--surface);color:var(--text);border:1px solid var(--border);padding:6px;border-radius:4px;">
+          <option value="small">Small</option>
+          <option value="medium" selected>Medium</option>
+          <option value="large">Large</option>
+          <option value="fullscreen">Fullscreen</option>
+        </select>
+      </div>
+      
+      <hr style="border-color:var(--border);margin:20px 0;">
+      
+      <div class="setting-row">
+        <div style="flex:0 0 200px;"><label>Title</label></div>
+        <input type="text" id="anno-title-input" placeholder="e.g. New Update!" style="flex:1;background:var(--surface);color:var(--text);border:1px solid var(--border);padding:6px 10px;border-radius:4px;" />
+      </div>
+      <div class="setting-row" style="align-items:flex-start;">
+        <div style="flex:0 0 200px;margin-top:8px;"><label>Content (Text)</label></div>
+        <textarea id="anno-text" rows="4" style="flex:1;resize:vertical;background:var(--surface);color:var(--text);border:1px solid var(--border);padding:8px;border-radius:4px;" placeholder="Type your message here..."></textarea>
+      </div>
+      <div class="setting-row">
+        <div style="flex:0 0 200px;"><label>OR — Image URL</label></div>
+        <input type="text" id="anno-img" placeholder="https://imgur.com/..." style="flex:1;background:var(--surface);color:var(--text);border:1px solid var(--border);padding:6px 10px;border-radius:4px;" />
+      </div>
+      <div class="setting-row">
+        <div style="flex:0 0 200px;">
+          <label>OR — Video URL</label>
+          <div class="setting-desc">YouTube link or direct .mp4</div>
+        </div>
+        <input type="text" id="anno-vid" placeholder="https://youtube.com/watch?v=..." style="flex:1;background:var(--surface);color:var(--text);border:1px solid var(--border);padding:6px 10px;border-radius:4px;" />
+      </div>
+      
+      <hr style="border-color:var(--border);margin:20px 0;">
+      
+      <div class="setting-row">
+        <div style="flex:0 0 200px;"><label>Button Text</label></div>
+        <input type="text" id="anno-btn-text" placeholder="e.g. Got it!" style="flex:1;background:var(--surface);color:var(--text);border:1px solid var(--border);padding:6px 10px;border-radius:4px;" />
+      </div>
+      <div class="setting-row">
+        <div style="flex:0 0 200px;"><label>Button Link (Optional)</label></div>
+        <input type="text" id="anno-btn-link" placeholder="https://..." style="flex:1;background:var(--surface);color:var(--text);border:1px solid var(--border);padding:6px 10px;border-radius:4px;" />
+      </div>
+
+      <div style="display:flex;gap:12px;margin-top:24px;">
+        <button id="btn-anno-preview" class="btn">👁 Preview</button>
+        <button id="btn-anno-save" class="btn" style="background:var(--accent);color:#000;border:none;">🚀 Publish JSON</button>
       </div>
     </div>
+    <textarea id="anno-json-editor" style="display:none;"></textarea>
   </div>
 
 </div><!-- /main -->
@@ -827,17 +886,46 @@
   // ── ANNOUNCEMENTS ──
   const annoEditor = document.getElementById('anno-json-editor');
   
+  function jsonToForm(ann) {
+    document.getElementById('anno-id').value = ann.id || 'ann-1';
+    document.getElementById('anno-active').value = ann.active !== false ? 'true' : 'false';
+    document.getElementById('anno-mode').value = ann.dismissMode || 'every-visit';
+    document.getElementById('anno-size').value = ann.size || 'medium';
+    document.getElementById('anno-title-input').value = ann.title || '';
+    document.getElementById('anno-text').value = ann.text || '';
+    document.getElementById('anno-img').value = ann.imageUrl || '';
+    document.getElementById('anno-vid').value = ann.videoUrl || '';
+    document.getElementById('anno-btn-text').value = ann.buttonText || '';
+    document.getElementById('anno-btn-link').value = ann.buttonLink || '';
+    annoEditor.value = JSON.stringify(ann, null, 2);
+  }
+
+  function formToJson() {
+    return {
+      active: document.getElementById('anno-active').value === 'true',
+      id: document.getElementById('anno-id').value.trim() || 'ann-' + Date.now(),
+      dismissMode: document.getElementById('anno-mode').value,
+      size: document.getElementById('anno-size').value,
+      title: document.getElementById('anno-title-input').value.trim(),
+      text: document.getElementById('anno-text').value.trim(),
+      imageUrl: document.getElementById('anno-img').value.trim(),
+      videoUrl: document.getElementById('anno-vid').value.trim(),
+      buttonText: document.getElementById('anno-btn-text').value.trim(),
+      buttonLink: document.getElementById('anno-btn-link').value.trim()
+    };
+  }
+  
   // Try to load existing JSON
   fetch('announcement.json?t=' + Date.now())
-    .then(r => r.text())
-    .then(t => annoEditor.value = t)
-    .catch(() => annoEditor.value = '{\n  "active": false,\n  "id": "ann-1",\n  "title": "Welcome!",\n  "text": "Write your text here...",\n  "buttonText": "Got it!",\n  "dismissMode": "permanent"\n}');
+    .then(r => r.json())
+    .then(ann => jsonToForm(ann))
+    .catch(() => jsonToForm({ active: false, id: "ann-1", title: "Welcome!", text: "Write your text here...", buttonText: "Got it!", dismissMode: "permanent" }));
 
   document.getElementById('btn-anno-preview').addEventListener('click', () => {
     try {
-      const ann = JSON.parse(annoEditor.value);
-      // We must call the viewer window to show preview, or we can just open index.html in a popup
-      // Since admin is separate, let's open a preview window
+      const ann = formToJson();
+      annoEditor.value = JSON.stringify(ann, null, 2);
+      
       const win = window.open('index.html', '_blank');
       if (win) {
         win.onload = () => {
@@ -848,17 +936,21 @@
         alert("Popup blocked.");
       }
     } catch (e) {
-      toast('Invalid JSON: ' + e.message, true);
+      toast('Error generating preview: ' + e.message, true);
     }
   });
 
   document.getElementById('btn-anno-save').addEventListener('click', async () => {
     try {
-      JSON.parse(annoEditor.value); // validate
-      // In a real app we'd need a backend endpoint or File System Access API to write to announcement.json
-      toast('To save, copy the JSON and overwrite announcement.json locally.');
+      const ann = formToJson();
+      const jsonStr = JSON.stringify(ann, null, 2);
+      annoEditor.value = jsonStr;
+      
+      // Copy to clipboard for the user
+      await navigator.clipboard.writeText(jsonStr);
+      toast('🚀 JSON copied to clipboard! Overwrite announcement.json in your repo to publish.');
     } catch(e) {
-      toast('Invalid JSON: ' + e.message, true);
+      toast('Error saving JSON: ' + e.message, true);
     }
   });
 
