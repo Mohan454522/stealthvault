@@ -179,10 +179,7 @@
 
   <div class="nav-section">
     <div class="nav-section-title">Overview</div>
-    <button class="nav-item active" data-page="dashboard">
-      <span class="nav-icon">📊</span><span>Dashboard</span>
-    </button>
-    <button class="nav-item" data-page="settings">
+    <button class="nav-item active" data-page="settings">
       <span class="nav-icon">⚙️</span><span>App Settings</span>
     </button>
   </div>
@@ -191,9 +188,6 @@
     <div class="nav-section-title">Deployment</div>
     <button class="nav-item" data-page="deploy">
       <span class="nav-icon">🚀</span><span>Deploy / Release</span>
-    </button>
-    <button class="nav-item" data-page="branches">
-      <span class="nav-icon">🌿</span><span>Branches</span>
     </button>
   </div>
 
@@ -224,108 +218,8 @@
 <!-- MAIN -->
 <div class="main">
 
-  <!-- ─── DASHBOARD ─── -->
-  <div class="page active" id="page-dashboard">
-    <div class="page-header">
-      <h1>Dashboard</h1>
-      <p>StealthVault live status · App config · Quick actions</p>
-    </div>
-
-    <div class="stats-row">
-      <div class="stat-card">
-        <div class="stat-value" id="stat-version">v6</div>
-        <div class="stat-label">Vault Format</div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-value" id="stat-chunk">64 MB</div>
-        <div class="stat-label">Default Chunk</div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-value" id="stat-workers">auto</div>
-        <div class="stat-label">Workers</div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-value" id="stat-skip">10s</div>
-        <div class="stat-label">Skip Amount</div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-value" id="stat-preview">2 GB</div>
-        <div class="stat-label">Preview Limit</div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-value" id="stat-delay">5s</div>
-        <div class="stat-label">Auto-Next Delay</div>
-      </div>
-    </div>
-
-    <div class="card">
-      <div class="card-title">🌐 Deployments <span class="badge badge-live">Live</span></div>
-      <table>
-        <thead>
-          <tr><th>Environment</th><th>URL</th><th>Branch</th><th>Status</th></tr>
-        </thead>
-        <tbody>
-          <tr>
-            <td>Production</td>
-            <td><a href="https://vaults.codes" target="_blank" style="color:var(--accent)">vaults.codes</a></td>
-            <td><code>main</code></td>
-            <td style="color:var(--success)">● Live</td>
-          </tr>
-          <tr>
-            <td>Staging</td>
-            <td><a href="https://dev.vaults.codes" target="_blank" style="color:var(--accent)">dev.vaults.codes</a></td>
-            <td><code>dev</code></td>
-            <td style="color:var(--warn)">● Staging</td>
-          </tr>
-          <tr>
-            <td>GitHub</td>
-            <td><a href="https://github.com/Mohan454522/stealthvault" target="_blank" style="color:var(--accent)">Mohan454522/stealthvault</a></td>
-            <td><code>main, dev</code></td>
-            <td style="color:var(--success)">● Public</td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
-
-    <div class="card">
-      <div class="card-title">⚡ Quick Actions</div>
-      <div class="btn-row" style="margin-top:0;">
-        <button class="btn btn-primary" onclick="window.open('https://github.com/Mohan454522/stealthvault/actions','_blank')">🤖 GitHub Actions</button>
-        <button class="btn btn-primary" onclick="window.open('https://dash.cloudflare.com','_blank')">☁️ Cloudflare Pages</button>
-        <button class="btn btn-primary" onclick="window.open('index.html','_blank')">🔒 Open App</button>
-        <button class="btn btn-danger"  onclick="clearAllConfig()">🗑️ Reset App Config</button>
-      </div>
-    </div>
-
-    <div class="card">
-      <div class="card-title">📋 How Production Releases Work</div>
-      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:14px;">
-        <div style="background:var(--surface2);border-radius:8px;padding:14px;">
-          <div style="font-size:20px;margin-bottom:8px;">1️⃣</div>
-          <div style="font-weight:700;font-size:13px;margin-bottom:4px;">Code on dev branch</div>
-          <div style="font-size:12px;color:var(--text2);">All new features go to dev. This deploys to dev.vaults.codes automatically.</div>
-        </div>
-        <div style="background:var(--surface2);border-radius:8px;padding:14px;">
-          <div style="font-size:20px;margin-bottom:8px;">2️⃣</div>
-          <div style="font-weight:700;font-size:13px;margin-bottom:4px;">Test on staging</div>
-          <div style="font-size:12px;color:var(--text2);">Open dev.vaults.codes, test every feature, confirm everything works.</div>
-        </div>
-        <div style="background:var(--surface2);border-radius:8px;padding:14px;">
-          <div style="font-size:20px;margin-bottom:8px;">3️⃣</div>
-          <div style="font-weight:700;font-size:13px;margin-bottom:4px;">Run Promote workflow</div>
-          <div style="font-size:12px;color:var(--text2);">GitHub Actions → promote.yml → fill version + notes → Run. dev merges into main.</div>
-        </div>
-        <div style="background:var(--surface2);border-radius:8px;padding:14px;">
-          <div style="font-size:20px;margin-bottom:8px;">4️⃣</div>
-          <div style="font-weight:700;font-size:13px;margin-bottom:4px;">Auto deploy to vaults.codes</div>
-          <div style="font-size:12px;color:var(--text2);">Cloudflare Pages sees the push to main, deploys within ~30 seconds. Done.</div>
-        </div>
-      </div>
-    </div>
-  </div>
-
   <!-- ─── APP SETTINGS ─── -->
-  <div class="page" id="page-settings">
+  <div class="page active" id="page-settings">
     <div class="page-header">
       <h1>App Settings</h1>
       <p>These are synced to localStorage on the same domain. Changing them here changes them in StealthVault too.</p>
@@ -526,67 +420,6 @@
           <tr><td>Secrets</td><td>AWS Secrets Manager, Vault by HashiCorp</td><td>No server = no secrets needed</td></tr>
         </tbody>
       </table>
-    </div>
-  </div>
-
-  <!-- ─── BRANCHES ─── -->
-  <div class="page" id="page-branches">
-    <div class="page-header">
-      <h1>Branches &amp; Git Workflow</h1>
-      <p>How StealthVault is structured in git and what each branch means.</p>
-    </div>
-
-    <div class="card">
-      <div class="card-title">🌿 Branch Map</div>
-      <div class="timeline">
-        <div class="timeline-item">
-          <div style="position:relative;">
-            <div class="timeline-dot live"></div>
-            <div class="timeline-line"></div>
-          </div>
-          <div class="timeline-content">
-            <div class="timeline-tag">main <span class="badge badge-live" style="margin-left:8px;">PRODUCTION</span></div>
-            <div class="timeline-date">→ vaults.codes</div>
-            <div class="timeline-notes">Only updated by the promote workflow. Never push directly. Protected.</div>
-          </div>
-        </div>
-        <div class="timeline-item">
-          <div style="position:relative;">
-            <div class="timeline-dot staging"></div>
-            <div class="timeline-line"></div>
-          </div>
-          <div class="timeline-content">
-            <div class="timeline-tag">dev <span class="badge badge-staging" style="margin-left:8px;">STAGING</span></div>
-            <div class="timeline-date">→ dev.vaults.codes</div>
-            <div class="timeline-notes">This is where all development happens. Push here after every feature or fix. I push here automatically.</div>
-          </div>
-        </div>
-        <div class="timeline-item">
-          <div style="position:relative;">
-            <div class="timeline-dot"></div>
-          </div>
-          <div class="timeline-content">
-            <div class="timeline-tag">feature/xxx <span class="badge badge-info" style="margin-left:8px;">OPTIONAL</span></div>
-            <div class="timeline-date">→ no auto deploy</div>
-            <div class="timeline-notes">For big experimental features. Branch off dev, develop, merge back into dev when done. Not required for small changes.</div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <div class="card">
-      <div class="card-title">📦 Versioning (how to name releases)</div>
-      <table>
-        <thead><tr><th>Version</th><th>When to use</th><th>Examples</th></tr></thead>
-        <tbody>
-          <tr><td>v1.0.0 → v1.0.1</td><td>Patch — bug fix only</td><td>Fix progress bar sticking, fix crash on large files</td></tr>
-          <tr><td>v1.0.0 → v1.1.0</td><td>Minor — new feature, backward compatible</td><td>Add gallery type filter, add swipe gestures</td></tr>
-          <tr><td>v1.0.0 → v2.0.0</td><td>Major — breaking change</td><td>Vault format change, encryption algorithm change</td></tr>
-        </tbody>
-      </table>
-      <div style="margin-top:14px;font-size:12px;color:var(--text2);">
-        ⚠ StealthVault vault format changed in v6. All files encrypted with v6 format (MAGIC bytes <code style="color:var(--accent)">53564C540006</code>) are always compatible.
-      </div>
     </div>
   </div>
 
@@ -830,12 +663,6 @@
 
   function syncUI() {
     const c = loadCfg();
-    // Dashboard stats
-    document.getElementById('stat-chunk').textContent   = c.chunkSizeMB + ' MB';
-    document.getElementById('stat-workers').textContent = c.workerCount === 0 ? 'auto' : c.workerCount;
-    document.getElementById('stat-skip').textContent    = c.skipSeconds + 's';
-    document.getElementById('stat-preview').textContent = c.previewLimitMB >= 1024 ? (c.previewLimitMB/1024) + ' GB' : c.previewLimitMB + ' MB';
-    document.getElementById('stat-delay').textContent   = c.autoPlayDelay + 's';
     // Settings selects
     document.getElementById('set-chunk').value    = c.chunkSizeMB;
     document.getElementById('set-workers').value  = c.workerCount;
