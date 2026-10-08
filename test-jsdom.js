@@ -1,0 +1,1 @@
+const fs = require('fs'); const jsdom = require('jsdom'); const { JSDOM } = jsdom; const dom = new JSDOM(fs.readFileSync('index.html', 'utf8'), { runScripts: 'dangerously', resources: 'usable' }); dom.window.addEventListener('error', e => console.error('Error:', e.error || e.message)); setTimeout(() => { console.log('Done'); process.exit(0); }, 2000);

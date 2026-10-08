@@ -1995,4 +1995,123 @@ document.addEventListener('DOMContentLoaded', () => {
   CONFIG = loadConfig();
   syncSettingsUI();
   updateSkipLabels();
+  initAnnouncement();
 });
+
+// ═══════════════════════════════════════════════════════════════════════
+// ANNOUNCEMENT POPUP SYSTEM
+// ═══════════════════════════════════════════════════════════════════════
+const ANNO_JSON_URL = 'announcement.json';
+
+async function initAnnouncement() {
+  let ann;
+  try {
+    const res = await fetch(ANNO_JSON_URL + '?t=' + Date.now()); // bypass cache
+    if (!res.ok) return;
+    ann = await res.json();
+  } catch { return; } // silently fail if JSON missing
+
+  if (!ann || !ann.active) return;
+
+  const id = ann.id || 'ann-default';
+  const mode = ann.dismissMode || 'every-visit';
+
+  // Check dismiss state
+  if (mode === 'permanent') {
+    if (localStorage.getItem('anno_seen_' + id) === '1') return;
+  } else if (mode === 'session') {
+    if (sessionStorage.getItem('anno_seen_' + id) === '1') return;
+  }
+  // 'every-visit' → always show
+
+  showAnnoPopup(ann, false);
+}
+
+function buildAnnoBody(ann) {
+  const body = document.getElementById('anno-body');
+  body.innerHTML = '';
+
+  if (ann.imageUrl) {
+    const img = document.createElement('img');
+    img.src = ann.imageUrl; img.alt = ann.title || '';
+    body.appendChild(img);
+  }
+
+  // YouTube embed
+  if (ann.videoUrl && (ann.videoUrl.includes('youtube.com') || ann.videoUrl.includes('youtu.be'))) {
+    const videoId = ann.videoUrl.match(/(?:v=|youtu\.be\/)([^&?/]+)/)?.[1];
+    if (videoId) {
+      const iframe = document.createElement('iframe');
+      iframe.src = `https://www.youtube.com/embed/${videoId}?autoplay=0`;
+      iframe.allow = 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture';
+      iframe.allowFullscreen = true;
+      body.appendChild(iframe);
+    }
+  } else if (ann.videoUrl) {
+    // Direct video URL (.mp4 etc)
+    const vid = document.createElement('video');
+    vid.src = ann.videoUrl; vid.controls = true;
+    body.appendChild(vid);
+  }
+
+  if (ann.text) {
+    const p = document.createElement('p');
+    p.textContent = ann.text;
+    body.appendChild(p);
+  }
+}
+
+function showAnnoPopup(ann, isPreview) {
+  const modal   = document.getElementById('anno-modal');
+  const overlay = document.getElementById('anno-overlay');
+  const inner   = document.getElementById('anno-inner');
+  const title   = document.getElementById('anno-title');
+  const footer  = document.getElementById('anno-footer');
+  const btn     = document.getElementById('anno-btn');
+
+  inner.dataset.size = ann.size || 'medium';
+  title.innerHTML = '';
+
+  if (isPreview) {
+    const badge = document.createElement('div');
+    badge.className = 'anno-preview-badge'; badge.textContent = '● PREVIEW';
+    title.appendChild(badge);
+    title.appendChild(document.createElement('br'));
+  }
+  title.appendChild(document.createTextNode(ann.title || ''));
+
+  buildAnnoBody(ann);
+
+  if (ann.buttonText) {
+    btn.textContent = ann.buttonText;
+    btn.href = ann.buttonLink || '#';
+    btn.onclick = (e) => {
+      if (!ann.buttonLink) e.preventDefault();
+      dismiss();
+    };
+    footer.classList.remove('hidden');
+  } else {
+    footer.classList.add('hidden');
+  }
+
+  overlay.classList.remove('hidden');
+  modal.classList.remove('hidden');
+
+  function dismiss() {
+    overlay.classList.add('hidden');
+    modal.classList.add('hidden');
+    if (!isPreview) {
+      const mode = ann.dismissMode || 'every-visit';
+      const id   = ann.id || 'ann-default';
+      if (mode === 'permanent') localStorage.setItem('anno_seen_' + id, '1');
+      else if (mode === 'session') sessionStorage.setItem('anno_seen_' + id, '1');
+      // 'every-visit' → store nothing, shows again on reload
+    }
+  }
+
+  document.getElementById('anno-close').onclick = dismiss;
+  overlay.onclick = dismiss;
+}
+
+// Expose for admin preview
+window._annoPreview = function(ann) { showAnnoPopup(ann, true); };

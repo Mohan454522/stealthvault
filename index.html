@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>StealthVault</title>
-  <link rel="stylesheet" href="styles.css?v=3" />
+  <link rel="stylesheet" href="styles.css?v=4" />
 </head>
 <body>
   <!-- Ambient background -->
@@ -609,8 +609,21 @@
     </div>
   </div>
 
+  <!-- ══ ANNOUNCEMENT POPUP ══ -->
+  <div id="anno-overlay" class="anno-overlay hidden"></div>
+  <div id="anno-modal" class="anno-modal hidden" role="dialog" aria-modal="true">
+    <div id="anno-inner" class="anno-inner">
+      <button id="anno-close" class="anno-close" title="Close">✕</button>
+      <div id="anno-title" class="anno-title"></div>
+      <div id="anno-body" class="anno-body"></div>
+      <div id="anno-footer" class="anno-footer hidden">
+        <a id="anno-btn" class="anno-action-btn" href="#" target="_blank" rel="noopener">Got it!</a>
+      </div>
+    </div>
+  </div>
+
   <div id="toast" class="toast hidden"></div>
-  <script src="app.js?v=3"></script>
+  <script src="app.js?v=4"></script>
 </body>
 </html>
 

@@ -198,6 +198,13 @@
   </div>
 
   <div class="nav-section" style="margin-top:8px;">
+    <div class="nav-section-title">Content</div>
+    <button class="nav-item" data-page="announcement">
+      <span class="nav-icon">📢</span><span>Announcements</span>
+    </button>
+  </div>
+
+  <div class="nav-section" style="margin-top:8px;">
     <div class="nav-section-title">Reference</div>
     <button class="nav-item" data-page="format">
       <span class="nav-icon">📐</span><span>Vault Format</span>
@@ -716,6 +723,27 @@
     </div>
   </div>
 
+  <div class="page" id="page-announcement">
+    <div class="page-header">
+      <h1>Announcements</h1>
+      <p style="color:var(--text2);margin-top:4px;">Manage the popup announcement shown to users.</p>
+    </div>
+    
+    <div class="card">
+      <div class="setting-row">
+        <div>
+          <label>announcement.json</label>
+          <div class="setting-desc">Edit the JSON payload below. Note: You must commit this file to Git for users to see it.</div>
+        </div>
+      </div>
+      <textarea id="anno-json-editor" style="width:100%;height:300px;background:#0d0d0d;color:#10b981;border:1px solid #333;border-radius:6px;padding:12px;font-family:monospace;white-space:pre;"></textarea>
+      <div style="display:flex;gap:12px;margin-top:16px;">
+        <button id="btn-anno-preview" class="btn">Preview Popup</button>
+        <button id="btn-anno-save" class="btn" style="background:var(--accent);color:#000;border:none;">Save Locally</button>
+      </div>
+    </div>
+  </div>
+
 </div><!-- /main -->
 
 <div id="toast"></div>
@@ -796,6 +824,44 @@
   }
 
   syncUI();
+  // ── ANNOUNCEMENTS ──
+  const annoEditor = document.getElementById('anno-json-editor');
+  
+  // Try to load existing JSON
+  fetch('announcement.json?t=' + Date.now())
+    .then(r => r.text())
+    .then(t => annoEditor.value = t)
+    .catch(() => annoEditor.value = '{\n  "active": false,\n  "id": "ann-1",\n  "title": "Welcome!",\n  "text": "Write your text here...",\n  "buttonText": "Got it!",\n  "dismissMode": "permanent"\n}');
+
+  document.getElementById('btn-anno-preview').addEventListener('click', () => {
+    try {
+      const ann = JSON.parse(annoEditor.value);
+      // We must call the viewer window to show preview, or we can just open index.html in a popup
+      // Since admin is separate, let's open a preview window
+      const win = window.open('index.html', '_blank');
+      if (win) {
+        win.onload = () => {
+          if (win._annoPreview) win._annoPreview(ann);
+          else alert("Preview function not found in viewer.");
+        };
+      } else {
+        alert("Popup blocked.");
+      }
+    } catch (e) {
+      toast('Invalid JSON: ' + e.message, true);
+    }
+  });
+
+  document.getElementById('btn-anno-save').addEventListener('click', async () => {
+    try {
+      JSON.parse(annoEditor.value); // validate
+      // In a real app we'd need a backend endpoint or File System Access API to write to announcement.json
+      toast('To save, copy the JSON and overwrite announcement.json locally.');
+    } catch(e) {
+      toast('Invalid JSON: ' + e.message, true);
+    }
+  });
+
 </script>
 </body>
 </html>

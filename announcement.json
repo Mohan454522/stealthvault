@@ -1,0 +1,13 @@
+{
+  "id": "ann-001",
+  "active": false,
+  "dismissMode": "every-visit",
+  "size": "medium",
+  "title": "👋 Hello from the Vault",
+  "contentType": "text",
+  "text": "Welcome! This is a test announcement. Edit this in admin.html.",
+  "imageUrl": "",
+  "videoUrl": "",
+  "buttonText": "Got it!",
+  "buttonLink": ""
+}
