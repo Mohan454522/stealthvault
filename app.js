@@ -200,6 +200,33 @@ function makeProgress(barEl, labelEl) {
   };
 }
 
+// ── Folder picker error helper ────────────────────────────────────────
+// Chrome/Edge block access to system-protected folders (Downloads root, Desktop,
+// C:\, etc.) with a SecurityError or a message containing "system".
+// This gives users a clear, actionable message instead of the raw browser error.
+function handlePickerError(e) {
+  if (e.name === 'AbortError') return; // user cancelled — silent
+  if (
+    e.name === 'SecurityError' ||
+    e.message?.toLowerCase().includes('system') ||
+    e.message?.toLowerCase().includes('not allowed')
+  ) {
+    toast('⚠ Protected folder — create a new folder (e.g. "MyVaults" on your Desktop) and select that instead.', 'error');
+  } else {
+    toast('Folder error: ' + e.message, 'error');
+  }
+}
+
+// Wrapper: pick a directory and show a friendly error on failure
+async function safePickDir(opts = {}) {
+  try {
+    return await window.showDirectoryPicker(opts);
+  } catch(e) {
+    handlePickerError(e);
+    return null;
+  }
+}
+
 // ═══════════════════════════════════════════════════════════════════════
 // VAULT I/O — V6 FORMAT
 // ═══════════════════════════════════════════════════════════════════════
@@ -792,6 +819,8 @@ document.getElementById('hide-pw-confirm').addEventListener('input', function() 
 });
 
 
+
+
 // Pick output folder
 document.getElementById('btn-pick-output-folder').addEventListener('click', async () => {
   try {
@@ -799,7 +828,14 @@ document.getElementById('btn-pick-output-folder').addEventListener('click', asyn
     const el = document.getElementById('output-folder-status');
     el.className = 'folder-status loaded';
     el.textContent = `✔ Output folder: "${outputDirHandle.name}"`;
-  } catch(e) { if (e.name!=='AbortError') toast('Error: '+e.message,'error'); }
+  } catch(e) {
+    if (e.name === 'AbortError') return; // user cancelled — do nothing
+    if (e.name === 'SecurityError' || e.message?.includes('system')) {
+      toast('⚠ That folder is system-protected. Create a new folder (e.g. "MyVaults" on Desktop) and select that instead.', 'error');
+    } else {
+      toast('Folder error: ' + e.message, 'error');
+    }
+  }
 });
 
 function renderOutputNames() {
