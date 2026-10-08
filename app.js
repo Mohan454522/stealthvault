@@ -1172,21 +1172,32 @@ function renderGallery() {
 // ═══════════════════════════════════════════════════════════════════════
 let curIdx=0, activeMedia=null;
 
+window.addEventListener('popstate', (e) => {
+  if (!document.getElementById('viewer-modal').classList.contains('hidden')) {
+    closeViewer(true);
+  }
+});
+
 function openViewer(idx) {
   curIdx = idx;
   document.getElementById('viewer-modal').classList.remove('hidden');
+  history.pushState({ viewer: true }, '', '#viewer');
   loadViewerContent();
   updateViewerNav();
   PM.triggerAround(idx);
 }
 
-function closeViewer() {
+function closeViewer(fromPopState = false) {
+  if (document.getElementById('viewer-modal').classList.contains('hidden')) return;
   document.getElementById('viewer-modal').classList.add('hidden');
   if (activeMedia && activeMedia.pause) activeMedia.pause();
   activeMedia = null;
   document.getElementById('viewer-content').innerHTML = '';
   document.getElementById('viewer-nav-dots').innerHTML = '';
   document.getElementById('viewer-loading').classList.add('hidden');
+  if (fromPopState !== true && window.location.hash === '#viewer') {
+    history.back();
+  }
 }
 
 async function loadViewerContent() {
@@ -1754,10 +1765,10 @@ document.getElementById('btn-lock-vault').addEventListener('click', () => {
   if (!container) return;
 
   let touchStartX = 0, touchStartY = 0, touchStartTime = 0;
-  const SWIPE_THRESHOLD  = 60;   // px to count as a swipe
-  const SWIPE_MAX_TIME   = 500;  // ms — faster than this counts as a swipe
-  const SWIPE_DOWN_MIN   = 80;   // px down to close viewer
-  const SWIPE_RATIO      = 1.5;  // horizontal must dominate for left/right swipe
+  let lastTapTime = 0, lastTapX = 0;
+  const SWIPE_THRESHOLD  = 60;
+  const SWIPE_MAX_TIME   = 500;
+  const SWIPE_RATIO      = 1.5;
 
   container.addEventListener('touchstart', e => {
     if (e.touches.length !== 1) return;
@@ -1768,29 +1779,53 @@ document.getElementById('btn-lock-vault').addEventListener('click', () => {
 
   container.addEventListener('touchend', e => {
     if (e.changedTouches.length !== 1) return;
-    const dx   = e.changedTouches[0].clientX - touchStartX;
-    const dy   = e.changedTouches[0].clientY - touchStartY;
+    const endX = e.changedTouches[0].clientX;
+    const endY = e.changedTouches[0].clientY;
+    const dx   = endX - touchStartX;
+    const dy   = endY - touchStartY;
     const dt   = Date.now() - touchStartTime;
     const absDx = Math.abs(dx), absDy = Math.abs(dy);
 
-    if (dt > SWIPE_MAX_TIME) return; // too slow
-
-    // Swipe down → close viewer
-    if (dy > SWIPE_DOWN_MIN && absDy > absDx) {
-      closeViewer(); return;
+    const isMedia = activeMedia && (activeMedia.tagName === 'VIDEO' || activeMedia.tagName === 'AUDIO');
+    
+    // Double tap for 10s skip (YouTube style)
+    if (isMedia && dt < 250 && absDx < 20 && absDy < 20) {
+      const now = Date.now();
+      if (now - lastTapTime < 300 && Math.abs(endX - lastTapX) < 40) {
+        const halfWidth = window.innerWidth / 2;
+        if (endX > halfWidth) skipMedia(+1);
+        else skipMedia(-1);
+        lastTapTime = 0;
+        return;
+      }
+      lastTapTime = now;
+      lastTapX = endX;
     }
 
-    // Horizontal swipe — only when NOT on a video (scrolling inside controls)
+    if (dt > SWIPE_MAX_TIME) return;
+
+    // Vertical swipe -> Next/Prev item (Reels style)
+    if (absDy > SWIPE_THRESHOLD && absDy > absDx * SWIPE_RATIO) {
+      cancelAutoNext();
+      if (dy < 0) {
+        // Swipe UP -> Next
+        if (curIdx < filteredItems.length - 1) navigateTo(curIdx + 1);
+      } else {
+        // Swipe DOWN -> Prev
+        if (curIdx > 0) navigateTo(curIdx - 1);
+      }
+      return;
+    }
+
+    // Keep horizontal swipe just in case (disabled on video scrubber)
     const isOnVideo = e.target.closest('video') !== null;
     if (isOnVideo) return;
 
     if (absDx > SWIPE_THRESHOLD && absDx > absDy * SWIPE_RATIO) {
       cancelAutoNext();
       if (dx < 0) {
-        // Swipe left → next
         if (curIdx < filteredItems.length - 1) navigateTo(curIdx + 1);
       } else {
-        // Swipe right → prev
         if (curIdx > 0) navigateTo(curIdx - 1);
       }
     }
