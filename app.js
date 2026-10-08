@@ -1533,7 +1533,6 @@ document.getElementById('settings-overlay').addEventListener('click', closeSetti
 
 const btnShortcuts = document.getElementById('btn-shortcuts');
 if (btnShortcuts) {
-  // We'll replace the existing event listener by cloning, but it's easier to just add an extra click handler to close the menu
   btnShortcuts.addEventListener('click', closeMenu);
 }
 document.getElementById('btn-reset-settings').addEventListener('click', () => {
@@ -1644,6 +1643,9 @@ function attachVideoHandlers(videoEl) {
 // KEYBOARD SHORTCUTS — context-aware
 // ═══════════════════════════════════════════════════════════════════════
 document.addEventListener('keydown', e => {
+  if (e.key === 'Escape' && !document.getElementById('kbd-modal')?.classList.contains('hidden')) {
+    closeKbdModal(); return;
+  }
   // Settings panel: Escape closes it
   if (!document.getElementById('settings-panel').classList.contains('open')) {
     if (e.key === 'Escape' && !document.getElementById('viewer-modal').classList.contains('hidden')) {
@@ -1667,14 +1669,16 @@ document.addEventListener('keydown', e => {
 
     // ── Context-aware arrows ──
     case 'ArrowLeft':
-      e.preventDefault();
-      if (isMedia) skipMedia(-1);                                       // skip video back
-      else { cancelAutoNext(); if (curIdx>0) navigateTo(curIdx-1); }   // navigate
+      e.preventDefault(); cancelAutoNext(); if (curIdx>0) navigateTo(curIdx-1);
       break;
     case 'ArrowRight':
-      e.preventDefault();
-      if (isMedia) skipMedia(+1);                                              // skip video forward
-      else { cancelAutoNext(); if (curIdx<filteredItems.length-1) navigateTo(curIdx+1); } // navigate
+      e.preventDefault(); cancelAutoNext(); if (curIdx<filteredItems.length-1) navigateTo(curIdx+1);
+      break;
+    case 'j': case 'J':
+      if (isMedia) { e.preventDefault(); skipMedia(-1); }
+      break;
+    case 'l': case 'L':
+      if (isMedia) { e.preventDefault(); skipMedia(+1); }
       break;
 
     // ── Volume (up/down arrows, only when media is active) ──
@@ -1705,6 +1709,11 @@ document.addEventListener('keydown', e => {
         document.pictureInPictureElement
           ? document.exitPictureInPicture()
           : activeMedia.requestPictureInPicture().catch(() => toast('PiP not available.', 'error'));
+      break;
+    }
+    case '?': {
+      e.preventDefault();
+      openKbdModal();
       break;
     }
   }
@@ -1748,7 +1757,6 @@ document.getElementById('type-filter-chips')?.addEventListener('click', e => {
 });
 
 // Update search handler to use combined filter
-document.getElementById('search-box').removeEventListener('input', null); // detach old handler
 document.getElementById('search-box').addEventListener('input', applyFilters);
 
 // Reset filter on vault lock
@@ -1977,18 +1985,6 @@ document.getElementById('btn-shortcuts')?.addEventListener('click', openKbdModal
 document.getElementById('kbd-modal')?.addEventListener('click', e => {
   if (e.target === document.getElementById('kbd-modal')) closeKbdModal();
 });
-
-// Wire ? key into existing keyboard handler — extend the switch case
-// (handled in the main keyboard handler below via a patch)
-document.addEventListener('keydown', e => {
-  if (e.key === '?' && !e.ctrlKey && !e.altKey) {
-    const active = document.activeElement;
-    if (active && (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA')) return;
-    e.preventDefault();
-    openKbdModal();
-  }
-  if (e.key === 'Escape') closeKbdModal();
-}, { capture: false });
 
 // ═══════════════════════════════════════════════════════════════════════
 // INITIALISE ON DOM READY
