@@ -394,8 +394,9 @@ async function vaultDecryptFull(item, password, pool, onProgress) {
   const result = new Uint8Array(item.size);
   let writeOff=0, done=0, t0=Date.now();
 
-  for (let base=0; base<item.nChunks; base+=BATCH) {
-    const bEnd = Math.min(base+BATCH, item.nChunks);
+  const batchSz = getPoolSz();
+  for (let base=0; base<item.nChunks; base+=batchSz) {
+    const bEnd = Math.min(base+batchSz, item.nChunks);
     // Read encrypted chunks in parallel
     const readPs = [];
     for (let ci=base; ci<bEnd; ci++) {
@@ -449,8 +450,9 @@ async function vaultExportItem(item, password) {
   const writable = await fh.createWritable();
   let done=0;
 
-  for (let base=0; base<item.nChunks; base+=BATCH) {
-    const bEnd = Math.min(base+BATCH, item.nChunks);
+  const batchSz = getPoolSz();
+  for (let base=0; base<item.nChunks; base+=batchSz) {
+    const bEnd = Math.min(base+batchSz, item.nChunks);
     const readPs = [];
     for (let ci=base; ci<bEnd; ci++) {
       const absOff = item.chunkOffsets[ci];
