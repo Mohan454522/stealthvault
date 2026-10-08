@@ -369,16 +369,38 @@ async function vaultReadMeta(imageFile, password) {
   }
   await POOL.rst();
 
-  // ── Step 5: compute chunk positions arithmetically using the STORED chunk size
+  // ── Step 5: auto-detect real chunk size from first chunk's encrypted length, then
+  //           compute all chunk positions arithmetically.
+  // Why: old vaults don't store the chunk size in the header. We detect it by reading
+  // the first 4-byte length prefix of the first chunk and reverse-calculating:
+  //   encLen = plainLen + ENC_OVERHEAD  →  plainLen = encLen - ENC_OVERHEAD
+  // That plainLen IS the chunk size for all but the last chunk.
   const dataStart = coverSize + headerSize;
   let pos = dataStart;
+
   for (const item of items) {
-    const nChunks = item.size > 0 ? Math.ceil(item.size / item.chunkSz) : 0;
+    if (item.size === 0) {
+      item.nChunks = 0; item.chunkOffsets = []; continue;
+    }
+
+    // Read first chunk length prefix to detect the real chunk size
+    try {
+      const lb = await readBlob(imageFile.slice(pos, pos + 4));
+      const firstEncLen = ru32(lb, 0);
+      const detectedChunkSz = firstEncLen - ENC_OVERHEAD;
+      // Sanity check: must be a known chunk size between 1 MB and 512 MB
+      if (detectedChunkSz >= 1*1024*1024 && detectedChunkSz <= 512*1024*1024) {
+        item.chunkSz = detectedChunkSz;
+      }
+      // else: keep whatever getChunkSz() returned
+    } catch { /* keep default */ }
+
+    const nChunks = Math.ceil(item.size / item.chunkSz);
     item.nChunks      = nChunks;
     item.chunkOffsets = [];
-    for (let ci=0; ci<nChunks; ci++) {
+    for (let ci = 0; ci < nChunks; ci++) {
       item.chunkOffsets.push(pos);
-      const plainLen = Math.min(item.chunkSz, item.size - ci*item.chunkSz);
+      const plainLen = Math.min(item.chunkSz, item.size - ci * item.chunkSz);
       pos += 4 + plainLen + ENC_OVERHEAD;
     }
   }
