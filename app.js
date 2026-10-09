@@ -126,7 +126,11 @@ let CONFIG = loadConfig();
 
 // Derived live values (recalculated whenever CONFIG changes)
 function getChunkSz()    { return CONFIG.chunkSizeMB * 1024 * 1024; }
-function getPoolSz()     { return Math.min(Math.max(1, CONFIG.workerCount), 8); }
+function getPoolSz() { 
+  const c = CONFIG.workerCount;
+  if (!c || c === 0) return Math.min(4, navigator.hardwareConcurrency || 2);
+  return Math.min(Math.max(1, c), 8); 
+}
 function getPreviewMax() { return CONFIG.previewLimitMB * 1024 * 1024; }
 
 const POOL = new WorkerPool(getPoolSz());
@@ -298,7 +302,7 @@ async function vaultEncrypt(files, password, coverArrayBuf, outFH, onProgress) {
         const enc = await encPs[i];
         await writable.write(wu32(enc.length));
         await writable.write(enc);
-        done += chunks[i].length;
+        done += enc.length - 28;
         if (onProgress) onProgress(done, totalBytes);
       }
     }
@@ -537,10 +541,11 @@ async function vaultChangePassword(imageFile, oldPw, newPw, outFH, onProgress) {
       const encLen = ru32(lb, 0);
       const encDat = await readBlob(item.imageFile.slice(absOff+4, absOff+4+encLen));
       const plain  = await decW.dec(encDat.buffer);
-      const newEnc = await encW.enc(ownBuf(new Uint8Array(plain)));
+      const plainLen = plain.byteLength;
+      const newEnc = await encW.enc(ownBuf(plain));
       await writable.write(wu32(newEnc.length));
       await writable.write(newEnc);
-      done += plain.byteLength;
+      done += plainLen;
       if (onProgress) onProgress(done, totalBytes);
     }
   }
@@ -599,7 +604,7 @@ class PrefetchManager {
         const eL  = ru32(lb, 0);
         const enc = await readBlob(item.imageFile.slice(absOff+4, absOff+4+eL));
         const pln = await w.dec(enc.buffer);
-        result.set(new Uint8Array(pln), off); off += pln.byteLength;
+        result.set(pln, off); off += pln.byteLength;
       }
       await w.rst(); w.kill(); st.worker = null;
       st.url = URL.createObjectURL(new Blob([result], {type:item.mime}));

@@ -185,20 +185,6 @@
   </div>
 
   <div class="nav-section" style="margin-top:8px;">
-    <div class="nav-section-title">Deployment</div>
-    <button class="nav-item" data-page="deploy">
-      <span class="nav-icon">🚀</span><span>Deploy / Release</span>
-    </button>
-  </div>
-
-  <div class="nav-section" style="margin-top:8px;">
-    <div class="nav-section-title">Content</div>
-    <button class="nav-item" data-page="announcement">
-      <span class="nav-icon">📢</span><span>Announcements</span>
-    </button>
-  </div>
-
-  <div class="nav-section" style="margin-top:8px;">
     <div class="nav-section-title">Reference</div>
     <button class="nav-item" data-page="format">
       <span class="nav-icon">📐</span><span>Vault Format</span>
@@ -211,7 +197,6 @@
   <div class="sidebar-footer">
     <a href="index.html" target="_blank">↗ Open StealthVault</a>
     <a href="https://github.com/Mohan454522/stealthvault" target="_blank">↗ GitHub Repo</a>
-    <a href="https://dash.cloudflare.com" target="_blank">↗ Cloudflare</a>
   </div>
 </aside>
 
@@ -343,85 +328,6 @@
     <p id="settings-save-msg" style="margin-top:12px;font-size:12px;color:var(--success);display:none;">✔ Settings saved — reload StealthVault to apply</p>
   </div>
 
-  <!-- ─── DEPLOY / RELEASE ─── -->
-  <div class="page" id="page-deploy">
-    <div class="page-header">
-      <h1>Deploy / Release</h1>
-      <p>How to get code from dev to production. No terminal needed once you set this up.</p>
-    </div>
-
-    <div class="card">
-      <div class="card-title">🤖 Automated Workflows</div>
-      <div class="workflow-card">
-        <div class="workflow-icon">✅</div>
-        <div class="workflow-info">
-          <h3>CI — Validate on every push</h3>
-          <p>Runs automatically when you push to <code>dev</code> or <code>main</code>. Checks file existence, JS syntax, critical functions. Takes ~10 seconds.</p>
-        </div>
-        <div class="workflow-status status-auto">Auto</div>
-      </div>
-      <div class="workflow-card">
-        <div class="workflow-icon">🚀</div>
-        <div class="workflow-info">
-          <h3>Promote dev → main (Release)</h3>
-          <p>Manually triggered. You fill in the version number and release notes, choose dry_run=no, and it merges dev into main + creates a GitHub Release. Cloudflare then auto-deploys to vaults.codes.</p>
-        </div>
-        <div class="workflow-status status-manual">Manual</div>
-      </div>
-      <div class="workflow-card">
-        <div class="workflow-icon">☁️</div>
-        <div class="workflow-info">
-          <h3>Cloudflare Pages — Auto deploy</h3>
-          <p>Every push to <code>dev</code> → dev.vaults.codes (within 30s). Every push to <code>main</code> → vaults.codes (within 30s). No action required.</p>
-        </div>
-        <div class="workflow-status status-auto">Auto</div>
-      </div>
-    </div>
-
-    <div class="card">
-      <div class="card-title">📋 Step-by-step: Release to Production</div>
-      <div style="font-size:13px;line-height:1.9;color:var(--text2);">
-        <div style="display:grid;gap:12px;">
-          <div style="background:var(--surface2);border-radius:8px;padding:14px 16px;">
-            <strong style="color:var(--text);">Step 1:</strong> Push your code to dev (I do this for you automatically after each session)
-            <br><code style="color:var(--accent);font-family:var(--mono);font-size:12px;">git push origin dev</code>
-          </div>
-          <div style="background:var(--surface2);border-radius:8px;padding:14px 16px;">
-            <strong style="color:var(--text);">Step 2:</strong> Test on staging at
-            <a href="https://dev.vaults.codes" target="_blank" style="color:var(--accent);">dev.vaults.codes</a>
-            — encrypt a file, open it, test every button
-          </div>
-          <div style="background:var(--surface2);border-radius:8px;padding:14px 16px;">
-            <strong style="color:var(--text);">Step 3:</strong> Go to
-            <a href="https://github.com/Mohan454522/stealthvault/actions/workflows/promote.yml" target="_blank" style="color:var(--accent);">GitHub Actions → promote.yml → Run workflow</a>
-            <br>Fill in: version (e.g. v1.2.0), release notes, dry_run=<strong>no</strong>
-          </div>
-          <div style="background:var(--surface2);border-radius:8px;padding:14px 16px;">
-            <strong style="color:var(--text);">Step 4:</strong> Wait 30 seconds →
-            <a href="https://vaults.codes" target="_blank" style="color:var(--accent);">vaults.codes</a>
-            is updated. Done ✔
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <div class="card">
-      <div class="card-title">🏢 How Real Companies Do This</div>
-      <table>
-        <thead><tr><th>What</th><th>How companies do it</th><th>StealthVault version</th></tr></thead>
-        <tbody>
-          <tr><td>Branches</td><td>main (prod), staging, feature/* branches</td><td>main + dev</td></tr>
-          <tr><td>Code review</td><td>Pull Request reviewed by 2 engineers before merge</td><td>You are the engineer — just test on staging</td></tr>
-          <tr><td>CI</td><td>Lint, unit tests, integration tests, build, security scan</td><td>File check + JS syntax check</td></tr>
-          <tr><td>Deploy</td><td>Jenkins/GitLab CI/AWS CodeDeploy builds Docker, pushes to Kubernetes</td><td>Cloudflare Pages (zero config, free)</td></tr>
-          <tr><td>Versioning</td><td>Semantic versioning: v1.0.0, v1.1.0, v2.0.0</td><td>Same — tracked in GitHub Releases</td></tr>
-          <tr><td>Rollback</td><td>Re-deploy previous container image</td><td>Cloudflare Pages → Deployments → click previous build → Rollback</td></tr>
-          <tr><td>Monitoring</td><td>Datadog, Sentry, PagerDuty</td><td>Cloudflare Analytics (free, auto)</td></tr>
-          <tr><td>Secrets</td><td>AWS Secrets Manager, Vault by HashiCorp</td><td>No server = no secrets needed</td></tr>
-        </tbody>
-      </table>
-    </div>
-  </div>
 
   <!-- ─── VAULT FORMAT ─── -->
   <div class="page" id="page-format">
@@ -439,12 +345,11 @@
 <span class="dim">│</span>  <span class="hl">PAYLOAD HEADER:</span>
 <span class="dim">│</span>    MAGIC       [8 bytes]  <span class="dim">= 53 56 4C 54 00 06 00 00</span>
 <span class="dim">│</span>    SALT        [16 bytes] <span class="dim">= random, per-file</span>
-<span class="dim">│</span>    CHUNK_SIZE  [4 bytes]  <span class="dim">= uint32 LE ← stored at encrypt time</span>
 <span class="dim">│</span>    FILE_COUNT  [4 bytes]  <span class="dim">= uint32 LE</span>
 <span class="dim">│</span>    For each file:
 <span class="dim">│</span>      META_ENC_LEN [4 bytes]  <span class="dim">= uint32 LE</span>
 <span class="dim">│</span>      META_ENC     [N bytes]  <span class="dim">= AES-GCM(IV[12] + JSON + tag[16])</span>
-<span class="dim">│</span>        <span class="dim">JSON = { name, size, mime, nChunks, chunkSz }</span>
+<span class="dim">│</span>        <span class="dim">JSON = { name, size, mime }</span>
 <span class="dim">├─────────────────────────────────────────────────────┤</span>
 <span class="dim">│</span>  <span class="hl">PAYLOAD DATA:</span>
 <span class="dim">│</span>    For each file, for each chunk:
@@ -521,18 +426,13 @@
     </div>
 
     <div class="card">
-      <div class="card-title">🆘 If vaults.codes is down</div>
+      <div class="card-title">🆘 If the hosted app is unavailable</div>
       <div style="font-size:13px;color:var(--text2);line-height:1.8;">
-        <strong style="color:var(--text);">Option 1 — Use the GitHub source directly:</strong>
+        <strong style="color:var(--text);">Option 1 — Use the source code directly:</strong>
         <div style="background:var(--surface2);border-radius:8px;padding:12px 14px;margin:8px 0;font-family:var(--mono);font-size:12px;color:var(--accent);">
-          Download from: github.com/Mohan454522/stealthvault<br>
-          → Download ZIP → Extract → Open index.html in browser
+          Download the repository ZIP → Extract → Open index.html in your browser
         </div>
-        <strong style="color:var(--text);">Option 2 — Cloudflare Pages backup URL:</strong>
-        <div style="background:var(--surface2);border-radius:8px;padding:12px 14px;margin:8px 0;font-family:var(--mono);font-size:12px;color:var(--accent);">
-          stealthvault-[hash].pages.dev (check Cloudflare dashboard for the exact URL)
-        </div>
-        <strong style="color:var(--text);">Option 3 — Run locally:</strong>
+        <strong style="color:var(--text);">Option 2 — Run locally:</strong>
         <div style="background:var(--surface2);border-radius:8px;padding:12px 14px;margin:8px 0;font-family:var(--mono);font-size:12px;color:var(--text2);">
           Open index.html directly in Chrome/Edge. File:// URLs work fine.
         </div>
@@ -546,7 +446,7 @@
         <ol style="margin:10px 0 0 18px;display:flex;flex-direction:column;gap:6px;">
           <li>Your vault images (the encrypted JPEG files)</li>
           <li>Your passphrase(s) — written down or in a password manager</li>
-          <li>This URL: <strong style="color:var(--accent);">github.com/Mohan454522/stealthvault</strong></li>
+          <li>A backup copy of this application's source code (index.html, app.js, etc.)</li>
           <li>Note: "Open index.html in Chrome. File picker → select vault image → enter passphrase → Unlock."</li>
         </ol>
         <div style="margin-top:14px;font-size:12px;color:var(--warn);">
@@ -556,85 +456,7 @@
     </div>
   </div>
 
-  <div class="page" id="page-announcement">
-    <div class="page-header">
-      <h1>Announcements</h1>
-      <p style="color:var(--text2);margin-top:4px;">Manage the popup announcement shown to users.</p>
-    </div>
-    
-    <div class="card">
-      <div class="setting-row">
-        <div>
-          <label>Announcement ID</label>
-          <div class="setting-desc">Bump this (e.g. ann-002 to ann-003) to show the popup to returning users again.</div>
-        </div>
-        <input type="text" id="anno-id" value="ann-001" style="width:200px;background:var(--surface);color:var(--text);border:1px solid var(--border);padding:6px 10px;border-radius:4px;" />
-      </div>
-      <div class="setting-row">
-        <div><label>Status</label></div>
-        <select id="anno-active" style="width:200px;background:var(--surface);color:var(--text);border:1px solid var(--border);padding:6px;border-radius:4px;">
-          <option value="true">● Active</option>
-          <option value="false">○ Off</option>
-        </select>
-      </div>
-      <div class="setting-row">
-        <div><label>Dismiss Mode</label></div>
-        <select id="anno-mode" style="width:200px;background:var(--surface);color:var(--text);border:1px solid var(--border);padding:6px;border-radius:4px;">
-          <option value="every-visit">Every Visit (always shows)</option>
-          <option value="session">Once Per Session</option>
-          <option value="permanent">Once Ever</option>
-        </select>
-      </div>
-      <div class="setting-row">
-        <div><label>Size</label></div>
-        <select id="anno-size" style="width:200px;background:var(--surface);color:var(--text);border:1px solid var(--border);padding:6px;border-radius:4px;">
-          <option value="small">Small</option>
-          <option value="medium" selected>Medium</option>
-          <option value="large">Large</option>
-          <option value="fullscreen">Fullscreen</option>
-        </select>
-      </div>
-      
-      <hr style="border-color:var(--border);margin:20px 0;">
-      
-      <div class="setting-row">
-        <div style="flex:0 0 200px;"><label>Title</label></div>
-        <input type="text" id="anno-title-input" placeholder="e.g. New Update!" style="flex:1;background:var(--surface);color:var(--text);border:1px solid var(--border);padding:6px 10px;border-radius:4px;" />
-      </div>
-      <div class="setting-row" style="align-items:flex-start;">
-        <div style="flex:0 0 200px;margin-top:8px;"><label>Content (Text)</label></div>
-        <textarea id="anno-text" rows="4" style="flex:1;resize:vertical;background:var(--surface);color:var(--text);border:1px solid var(--border);padding:8px;border-radius:4px;" placeholder="Type your message here..."></textarea>
-      </div>
-      <div class="setting-row">
-        <div style="flex:0 0 200px;"><label>OR — Image URL</label></div>
-        <input type="text" id="anno-img" placeholder="https://imgur.com/..." style="flex:1;background:var(--surface);color:var(--text);border:1px solid var(--border);padding:6px 10px;border-radius:4px;" />
-      </div>
-      <div class="setting-row">
-        <div style="flex:0 0 200px;">
-          <label>OR — Video URL</label>
-          <div class="setting-desc">YouTube link or direct .mp4</div>
-        </div>
-        <input type="text" id="anno-vid" placeholder="https://youtube.com/watch?v=..." style="flex:1;background:var(--surface);color:var(--text);border:1px solid var(--border);padding:6px 10px;border-radius:4px;" />
-      </div>
-      
-      <hr style="border-color:var(--border);margin:20px 0;">
-      
-      <div class="setting-row">
-        <div style="flex:0 0 200px;"><label>Button Text</label></div>
-        <input type="text" id="anno-btn-text" placeholder="e.g. Got it!" style="flex:1;background:var(--surface);color:var(--text);border:1px solid var(--border);padding:6px 10px;border-radius:4px;" />
-      </div>
-      <div class="setting-row">
-        <div style="flex:0 0 200px;"><label>Button Link (Optional)</label></div>
-        <input type="text" id="anno-btn-link" placeholder="https://..." style="flex:1;background:var(--surface);color:var(--text);border:1px solid var(--border);padding:6px 10px;border-radius:4px;" />
-      </div>
 
-      <div style="display:flex;gap:12px;margin-top:24px;">
-        <button id="btn-anno-preview" class="btn">👁 Preview</button>
-        <button id="btn-anno-save" class="btn" style="background:var(--accent);color:#000;border:none;">🚀 Publish JSON</button>
-      </div>
-    </div>
-    <textarea id="anno-json-editor" style="display:none;"></textarea>
-  </div>
 
 </div><!-- /main -->
 
@@ -710,76 +532,7 @@
   }
 
   syncUI();
-  // ── ANNOUNCEMENTS ──
-  const annoEditor = document.getElementById('anno-json-editor');
-  
-  function jsonToForm(ann) {
-    document.getElementById('anno-id').value = ann.id || 'ann-1';
-    document.getElementById('anno-active').value = ann.active !== false ? 'true' : 'false';
-    document.getElementById('anno-mode').value = ann.dismissMode || 'every-visit';
-    document.getElementById('anno-size').value = ann.size || 'medium';
-    document.getElementById('anno-title-input').value = ann.title || '';
-    document.getElementById('anno-text').value = ann.text || '';
-    document.getElementById('anno-img').value = ann.imageUrl || '';
-    document.getElementById('anno-vid').value = ann.videoUrl || '';
-    document.getElementById('anno-btn-text').value = ann.buttonText || '';
-    document.getElementById('anno-btn-link').value = ann.buttonLink || '';
-    annoEditor.value = JSON.stringify(ann, null, 2);
-  }
 
-  function formToJson() {
-    return {
-      active: document.getElementById('anno-active').value === 'true',
-      id: document.getElementById('anno-id').value.trim() || 'ann-' + Date.now(),
-      dismissMode: document.getElementById('anno-mode').value,
-      size: document.getElementById('anno-size').value,
-      title: document.getElementById('anno-title-input').value.trim(),
-      text: document.getElementById('anno-text').value.trim(),
-      imageUrl: document.getElementById('anno-img').value.trim(),
-      videoUrl: document.getElementById('anno-vid').value.trim(),
-      buttonText: document.getElementById('anno-btn-text').value.trim(),
-      buttonLink: document.getElementById('anno-btn-link').value.trim()
-    };
-  }
-  
-  // Try to load existing JSON
-  fetch('announcement.json?t=' + Date.now())
-    .then(r => r.json())
-    .then(ann => jsonToForm(ann))
-    .catch(() => jsonToForm({ active: false, id: "ann-1", title: "Welcome!", text: "Write your text here...", buttonText: "Got it!", dismissMode: "permanent" }));
-
-  document.getElementById('btn-anno-preview').addEventListener('click', () => {
-    try {
-      const ann = formToJson();
-      annoEditor.value = JSON.stringify(ann, null, 2);
-      
-      const win = window.open('index.html', '_blank');
-      if (win) {
-        win.onload = () => {
-          if (win._annoPreview) win._annoPreview(ann);
-          else alert("Preview function not found in viewer.");
-        };
-      } else {
-        alert("Popup blocked.");
-      }
-    } catch (e) {
-      toast('Error generating preview: ' + e.message, true);
-    }
-  });
-
-  document.getElementById('btn-anno-save').addEventListener('click', async () => {
-    try {
-      const ann = formToJson();
-      const jsonStr = JSON.stringify(ann, null, 2);
-      annoEditor.value = jsonStr;
-      
-      // Copy to clipboard for the user
-      await navigator.clipboard.writeText(jsonStr);
-      toast('🚀 JSON copied to clipboard! Overwrite announcement.json in your repo to publish.');
-    } catch(e) {
-      toast('Error saving JSON: ' + e.message, true);
-    }
-  });
 
 </script>
 </body>

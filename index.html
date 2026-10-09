@@ -70,12 +70,13 @@
           <button class="chip" data-val="128">128 MB</button>
           <button class="chip" data-val="256">256 MB</button>
         </div>
-        <p class="settings-note">Old files always decrypt correctly — their chunk size is stored inside them.</p>
+        <p class="settings-note">Old files always decrypt correctly — their chunk size is auto-detected.</p>
       </div>
 
       <div class="settings-row">
         <label>Parallel Workers <span class="settings-hint">(higher = faster on multicore CPUs)</span></label>
         <div class="settings-chips" id="worker-count-chips">
+          <button class="chip" data-val="0">Auto</button>
           <button class="chip" data-val="1">1</button>
           <button class="chip" data-val="2">2</button>
           <button class="chip active" data-val="4">4</button>
