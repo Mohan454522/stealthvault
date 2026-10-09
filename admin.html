@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<meta name="robots" content="noindex" />
+<title>Admin — Control Center</title>
+<style>
+  :root{--bg:#080c14;--surface:#0f1520;--surface2:#141c2a;--surface3:#1a2235;--border:#1e2a3d;--border2:#263349;--text:#e8edf5;--text2:#8899b0;--text3:#4a5a72;--accent:#00a8ff;--adim:rgba(0,168,255,.08);--success:#00e896;--error:#ff3a6e;--warn:#ffb020;--font:Inter,system-ui,sans-serif;--mono:'JetBrains Mono','Fira Code',monospace}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--text);font-family:var(--font);min-height:100vh;display:flex}
+  aside{width:220px;flex-shrink:0;background:var(--surface);border-right:1px solid var(--border);padding:22px 12px;position:sticky;top:0;height:100vh;display:flex;flex-direction:column;gap:4px}
+  .brand{padding:0 8px 18px;border-bottom:1px solid var(--border);margin-bottom:10px}.brand b{font-size:14px;letter-spacing:.05em}.brand small{display:block;font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.08em;margin-top:2px}
+  .nav{display:flex;gap:10px;align-items:center;padding:9px 10px;border-radius:8px;border:1px solid transparent;background:none;color:var(--text2);font:500 13px var(--font);cursor:pointer;text-align:left;width:100%}
+  .nav:hover{background:var(--surface2);color:var(--text)}.nav.active{background:var(--adim);color:var(--accent);border-color:var(--border2)}
+  .nav .badge{margin-left:auto;font-size:10px;background:var(--warn);color:#111;border-radius:10px;padding:1px 7px;font-weight:700}
+  aside .foot{margin-top:auto;font-size:11px}aside a{color:var(--text3);text-decoration:none;display:block;margin-top:6px}aside a:hover{color:var(--accent)}
+  main{flex:1;min-width:0;padding:32px 36px 80px;max-width:960px}
+  h1{font-size:24px;margin-bottom:6px}.lead{color:var(--text2);font-size:14px;margin-bottom:22px;line-height:1.6}
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:18px 20px;margin-bottom:16px}
+  .card h2{font-size:13px;text-transform:uppercase;letter-spacing:.08em;color:var(--text3);margin-bottom:14px}
+  .row{display:flex;gap:12px;align-items:center;flex-wrap:wrap}.row.sp{justify-content:space-between}
+  label.f{display:flex;flex-direction:column;gap:5px;font-size:12px;color:var(--text2);flex:1;min-width:160px}
+  input[type=text],input[type=url],input[type=datetime-local],select,textarea{background:var(--surface2);border:1px solid var(--border2);color:var(--text);border-radius:8px;padding:9px 11px;font:13px var(--font);width:100%}
+  textarea{resize:vertical;min-height:84px;line-height:1.5}input:focus,select:focus,textarea:focus{outline:none;border-color:var(--accent)}
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px}
+  .chk{display:flex;gap:8px;align-items:center;font-size:13px;color:var(--text)}
+  .btn{padding:8px 15px;border-radius:8px;border:1px solid var(--border2);background:var(--surface2);color:var(--text);font:600 12.5px var(--font);cursor:pointer}
+  .btn:hover{border-color:var(--accent)}.btn.pri{background:var(--accent);color:#04101a;border-color:transparent}.btn.dan{color:var(--error)}.btn.sm{padding:5px 10px;font-size:11.5px}
+  .pill{font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding:2px 9px;border-radius:20px;border:1px solid}
+  .live{color:var(--success);border-color:rgba(0,232,150,.35)}.scheduled{color:var(--accent);border-color:rgba(0,168,255,.4)}.expired,.disabled{color:var(--text3);border-color:var(--border2)}
+  .ann{border-left:3px solid var(--c,var(--accent));padding:12px 14px;background:var(--surface2);border-radius:0 10px 10px 0;margin-bottom:10px}
+  .ann h3{font-size:14px}.ann p{font-size:12.5px;color:var(--text2);margin:5px 0 9px;white-space:pre-wrap;word-break:break-word}.ann .meta{font-size:11px;color:var(--text3);font-family:var(--mono)}
+  .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:18px}.stat{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:12px 14px}.stat b{font-size:22px;display:block}.stat span{font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.08em}
+  .msg{font-size:13px;padding:9px 12px;border-radius:8px;margin-bottom:8px;border:1px solid}.msg.err{color:var(--error);border-color:rgba(255,58,110,.35);background:rgba(255,58,110,.06)}.msg.warn{color:var(--warn);border-color:rgba(255,176,32,.35);background:rgba(255,176,32,.06)}.msg.ok{color:var(--success);border-color:rgba(0,232,150,.35);background:rgba(0,232,150,.06)}
+  pre{background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:12px;font:12px/1.6 var(--mono);overflow:auto;max-height:340px;color:var(--text2)}
+  ol.steps{padding-left:20px;font-size:13.5px;line-height:1.9;color:var(--text2)}ol.steps b{color:var(--text)}code{font-family:var(--mono);font-size:12px;background:var(--surface2);padding:1px 6px;border-radius:4px;color:var(--accent)}
+  .kv{display:grid;grid-template-columns:1fr 2fr auto;gap:8px;margin-bottom:8px}.kv.l{grid-template-columns:60px 1fr 2fr auto}
+  #toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--surface3);border:1px solid var(--border2);padding:10px 20px;border-radius:10px;font-size:13px;opacity:0;pointer-events:none;transition:opacity .2s;z-index:500}#toast.show{opacity:1}
+  @media(max-width:760px){body{flex-direction:column}aside{width:100%;height:auto;position:static;flex-direction:row;flex-wrap:wrap;padding:12px}.brand,aside .foot{display:none}.nav{width:auto}main{padding:20px 16px 80px}.stats{grid-template-columns:repeat(2,1fr)}}
+</style>
+</head>
+<body>
+<aside>
+  <div class="brand"><b id="brand-name">Admin</b><small>Control Center</small></div>
+  <div id="nav"></div>
+  <div class="foot"><a href="index.html">← Back to app</a><a id="repo-link" href="#" target="_blank" rel="noopener" hidden>Source on GitHub</a></div>
+</aside>
+<main id="page"></main>
+<div id="toast"></div>
+
+<script>window.SV_NO_AUTOSTART = true;</script>
+<script src="site.js?v=1"></script>
+<script>
+'use strict';
+const S = window.SVSite, DRAFT_KEY = 'sv-admin-draft', APP_CFG_KEY = 'sv-config-v1';
+let cfg = S.normalize({}), published = '', dirty = false, page = 'announcements', editing = null;
+
+// ── tiny DOM helper (all text via textContent → no injection) ──
+const h = (tag, p = {}, kids = []) => {
+  const n = document.createElement(tag);
+  for (const [k, v] of Object.entries(p)) {
+    if (k === 'text') n.textContent = v; else if (k === 'class') n.className = v;
+    else if (k.startsWith('on')) n.addEventListener(k.slice(2), v);
+    else if (k === 'value') n.value = v; else if (k === 'checked') n.checked = !!v;
+    else if (v !== false && v != null) n.setAttribute(k, v === true ? '' : v);
+  }
+  (Array.isArray(kids) ? kids : [kids]).forEach(c => c != null && n.append(c));
+  return n;
+};
+function toast(m) { const t = document.getElementById('toast'); t.textContent = m; t.classList.add('show'); clearTimeout(toast._t); toast._t = setTimeout(() => t.classList.remove('show'), 2600); }
+const uid = () => 'a-' + Date.now().toString(36) + Math.random().toString(36).slice(2, 5);
+const toLocal = iso => { const d = new Date(iso); if (!iso || isNaN(d)) return ''; const p = n => String(n).padStart(2, '0'); return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`; };
+const fromLocal = v => { const d = new Date(v); return v && !isNaN(d) ? d.toISOString() : ''; };
+const json = () => JSON.stringify(cfg, null, 2);
+
+// ── draft persistence ──
+function touch() { dirty = json() !== published; try { localStorage.setItem(DRAFT_KEY, json()); } catch {} renderNav(); }
+function loadDraft() { try { const d = localStorage.getItem(DRAFT_KEY); if (d) { cfg = S.normalize(JSON.parse(d)); return true; } } catch {} return false; }
+
+// ── navigation ──
+const PAGES = [['announcements', '📣', 'Announcements'], ['site', '⚙️', 'Site & defaults'], ['publish', '🚀', 'Publish'], ['browser', '🖥️', 'This browser']];
+function renderNav() {
+  const nav = document.getElementById('nav'); nav.textContent = '';
+  PAGES.forEach(([id, ic, label]) => nav.append(h('button', { class: 'nav' + (page === id ? ' active' : ''), onclick: () => go(id) },
+    [h('span', { text: ic }), h('span', { text: label }), id === 'publish' && dirty ? h('span', { class: 'badge', text: 'unsaved' }) : null])));
+  document.getElementById('brand-name').textContent = cfg.app.name + ' Admin';
+  const repo = document.getElementById('repo-link');
+  if (cfg.app.repo) { repo.href = 'https://github.com/' + cfg.app.repo; repo.hidden = false; } else repo.hidden = true;
+}
+function go(p) { page = p; editing = null; render(); }
+function render() { renderNav(); const m = document.getElementById('page'); m.textContent = ''; ({ announcements: pageAnn, site: pageSite, publish: pagePublish, browser: pageBrowser })[page](m); }
+
+// ═══ ANNOUNCEMENTS ═══
+function pageAnn(m) {
+  m.append(h('h1', { text: 'Announcements' }), h('p', { class: 'lead', text: 'Pop-ups and banners shown to everyone who opens the app. Each one appears once per person (unless you "re-show" it), only inside its schedule, and updates live without a reload (within ~5 minutes).' }));
+  if (editing) return annForm(m);
+  const count = s => cfg.announcements.filter(a => S.statusOf(a) === s).length;
+  m.append(h('div', { class: 'stats' }, ['live', 'scheduled', 'expired', 'disabled'].map(s => h('div', { class: 'stat' }, [h('b', { text: count(s) }), h('span', { text: s })]))));
+  m.append(h('div', { class: 'row', style: 'margin-bottom:14px' }, [h('button', { class: 'btn pri', text: '+ New announcement', onclick: () => { editing = { id: uid(), enabled: true, type: 'info', style: 'popup', title: '', message: '', linkText: '', linkUrl: '', startsAt: '', endsAt: '', dismissible: true, _new: true }; render(); } })]));
+  if (!cfg.announcements.length) m.append(h('div', { class: 'card' }, h('p', { class: 'lead', style: 'margin:0', text: 'No announcements yet.' })));
+  cfg.announcements.forEach((a, i) => {
+    const st = S.statusOf(a), t = S.TYPES[a.type];
+    const when = [a.startsAt && 'from ' + new Date(a.startsAt).toLocaleString(), a.endsAt && 'until ' + new Date(a.endsAt).toLocaleString()].filter(Boolean).join(' · ') || 'always';
+    const card = h('div', { class: 'ann' }, [
+      h('div', { class: 'row sp' }, [h('h3', { text: t.icon + ' ' + (a.title || '(no title)') }), h('span', { class: 'pill ' + st, text: st })]),
+      h('p', { text: a.message || '(no message)' }),
+      h('div', { class: 'meta', text: `${a.style} · ${a.type} · ${when} · id ${a.id}` }),
+      h('div', { class: 'row', style: 'margin-top:10px' }, [
+        h('button', { class: 'btn sm', text: 'Edit', onclick: () => { editing = { ...a }; render(); } }),
+        h('button', { class: 'btn sm', text: 'Preview', onclick: () => S.showPopup(a, { preview: true }) }),
+        h('button', { class: 'btn sm', text: a.enabled ? 'Disable' : 'Enable', onclick: () => { a.enabled = !a.enabled; touch(); render(); } }),
+        h('button', { class: 'btn sm', text: 'Re-show to everyone', title: 'Gives it a new id so people who dismissed it see it again', onclick: () => { a.id = uid(); touch(); render(); toast('New id — everyone will see it again'); } }),
+        h('button', { class: 'btn sm', text: 'Duplicate', onclick: () => { cfg.announcements.splice(i + 1, 0, { ...a, id: uid(), title: a.title + ' (copy)', enabled: false }); touch(); render(); } }),
+        h('button', { class: 'btn sm dan', text: 'Delete', onclick: () => { if (confirm('Delete this announcement?')) { cfg.announcements.splice(i, 1); touch(); render(); } } }),
+      ]),
+    ]);
+    card.style.setProperty('--c', { info: '#00a8ff', success: '#00e896', warning: '#ffb020', critical: '#ff3a6e' }[a.type]);
+    m.append(card);
+  });
+}
+function annForm(m) {
+  const e = editing, bind = (k, tr = v => v) => ev => { e[k] = tr(ev.target.type === 'checkbox' ? ev.target.checked : ev.target.value); };
+  const sel = (k, opts) => h('select', { onchange: bind(k) }, opts.map(([v, l]) => h('option', { value: v, text: l, ...(e[k] === v ? { selected: true } : {}) })));
+  m.append(h('div', { class: 'card' }, [
+    h('h2', { text: e._new ? 'New announcement' : 'Edit announcement' }),
+    h('div', { class: 'grid', style: 'margin-bottom:12px' }, [
+      h('label', { class: 'f' }, ['Type', sel('type', [['info', 'ℹ️ Info'], ['success', '✅ Success'], ['warning', '⚠️ Warning'], ['critical', '🚨 Critical']])]),
+      h('label', { class: 'f' }, ['Display as', sel('style', [['popup', 'Pop-up (modal, once)'], ['banner', 'Banner (top strip)']])]),
+    ]),
+    h('label', { class: 'f', style: 'margin-bottom:12px' }, ['Title', h('input', { type: 'text', maxlength: 120, value: e.title, oninput: bind('title') })]),
+    h('label', { class: 'f', style: 'margin-bottom:12px' }, ['Message', h('textarea', { maxlength: 1200, oninput: bind('message'), text: e.message })]),
+    h('div', { class: 'grid', style: 'margin-bottom:12px' }, [
+      h('label', { class: 'f' }, ['Button / link text (optional)', h('input', { type: 'text', maxlength: 60, value: e.linkText, oninput: bind('linkText') })]),
+      h('label', { class: 'f' }, ['Link URL (https://… optional)', h('input', { type: 'url', value: e.linkUrl, oninput: bind('linkUrl') })]),
+      h('label', { class: 'f' }, ['Show from (your local time)', h('input', { type: 'datetime-local', value: toLocal(e.startsAt), onchange: ev => { e.startsAt = fromLocal(ev.target.value); } })]),
+      h('label', { class: 'f' }, ['Hide after', h('input', { type: 'datetime-local', value: toLocal(e.endsAt), onchange: ev => { e.endsAt = fromLocal(ev.target.value); } })]),
+    ]),
+    h('div', { class: 'row', style: 'margin-bottom:16px' }, [
+      h('label', { class: 'chk' }, [h('input', { type: 'checkbox', checked: e.enabled, onchange: bind('enabled') }), 'Enabled']),
+      h('label', { class: 'chk' }, [h('input', { type: 'checkbox', checked: e.dismissible, onchange: bind('dismissible') }), 'Banner can be closed (pop-ups can always be closed)']),
+    ]),
+    h('div', { class: 'row' }, [
+      h('button', { class: 'btn pri', text: 'Save to draft', onclick: () => {
+        if (!e.title.trim() && !e.message.trim()) return toast('Add a title or a message');
+        const { _new, ...clean } = e, i = cfg.announcements.findIndex(a => a.id === clean.id);
+        i >= 0 ? (cfg.announcements[i] = clean) : cfg.announcements.unshift(clean);
+        editing = null; touch(); render(); toast('Saved to draft — go to Publish to deploy');
+      } }),
+      h('button', { class: 'btn', text: 'Preview', onclick: () => S.showPopup(S.normalize({ announcements: [e] }).announcements[0], { preview: true }) }),
+      h('button', { class: 'btn', text: 'Cancel', onclick: () => { editing = null; render(); } }),
+    ]),
+  ]));
+}
+
+// ═══ SITE & DEFAULTS ═══
+const DEF_FIELDS = [
+  ['chunkSizeMB', 'Chunk size for new vaults', [16, 32, 64, 128, 256], v => v + ' MB'],
+  ['workerCount', 'Crypto workers', [0, 1, 2, 4, 6, 8], v => v === 0 ? 'Auto' : v],
+  ['skipSeconds', 'Skip step', [5, 10, 15, 30], v => v + ' s'],
+  ['autoPlayDelay', 'Auto-next countdown', [0, 3, 5, 10], v => v === 0 ? 'Instant' : v + ' s'],
+  ['prefetchAhead', 'Prefetch ahead', [0, 1, 2, 3, 4], v => v],
+  ['previewLimitMB', 'Preview size limit', [512, 1024, 2048, 4096], v => v >= 1024 ? v / 1024 + ' GB' : v + ' MB'],
+];
+function pageSite(m) {
+  m.append(h('h1', { text: 'Site & defaults' }), h('p', { class: 'lead', text: 'Everything here is written to config.json and read by the app at load time — nothing is hard-coded in the pages. Default settings only apply to people who have not changed that setting themselves.' }));
+  const a = cfg.app;
+  const inp = (label, get, set, ph = '') => h('label', { class: 'f' }, [label, h('input', { type: 'text', value: get(), placeholder: ph, oninput: ev => { set(ev.target.value); touch(); } })]);
+  m.append(h('div', { class: 'card' }, [h('h2', { text: 'App identity' }), h('div', { class: 'grid' }, [
+    inp('Name', () => a.name, v => a.name = v), inp('Logo (white part)', () => a.logoMain, v => a.logoMain = v), inp('Logo (accent part)', () => a.logoAccent, v => a.logoAccent = v),
+    inp('Version', () => a.version, v => a.version = v, 'v6.0.0'), inp('GitHub repo', () => a.repo, v => a.repo = v, 'owner/name')])]));
+  const dom = h('div'); const drawDom = () => { dom.textContent = '';
+    Object.entries(a.domains).forEach(([k, v]) => dom.append(h('div', { class: 'kv', style: 'grid-template-columns:1fr 2fr auto' }, [
+      h('input', { type: 'text', value: k, onchange: ev => { const nk = ev.target.value.trim(); if (nk && nk !== k) { const o = {}; for (const [kk, vv] of Object.entries(a.domains)) o[kk === k ? nk : kk] = vv; a.domains = o; touch(); drawDom(); } } }),
+      h('input', { type: 'text', value: v, oninput: ev => { a.domains[k] = ev.target.value; touch(); } }),
+      h('button', { class: 'btn sm dan', text: '✕', onclick: () => { delete a.domains[k]; touch(); drawDom(); } })]))); };
+  drawDom();
+  m.append(h('div', { class: 'card' }, [h('h2', { text: 'Domains / environments' }), dom, h('button', { class: 'btn sm', text: '+ Add', onclick: () => { let n = 'Environment', i = 1; while (n in a.domains) n = 'Environment ' + ++i; a.domains[n] = ''; touch(); drawDom(); } })]));
+
+  const d = cfg.defaults, ctl = h('div', { class: 'grid' });
+  DEF_FIELDS.forEach(([k, label, opts, fmt]) => {
+    const cur = Number(d[k] ?? opts[2]); const all = opts.includes(cur) ? opts : [...opts, cur].sort((x, y) => x - y);
+    ctl.append(h('label', { class: 'f' }, [label, h('select', { onchange: ev => { d[k] = Number(ev.target.value); touch(); } }, all.map(o => h('option', { value: o, text: fmt(o), ...(o === cur ? { selected: true } : {}) })))]));
+  });
+  ctl.append(h('label', { class: 'chk', style: 'align-self:end;padding-bottom:9px' }, [h('input', { type: 'checkbox', checked: d.autoPlayNext !== false, onchange: ev => { d.autoPlayNext = ev.target.checked; touch(); } }), 'Auto-play next']));
+  m.append(h('div', { class: 'card' }, [h('h2', { text: 'Default app settings' }), ctl]));
+
+  const lk = h('div'); const drawLk = () => { lk.textContent = '';
+    cfg.links.forEach((l, i) => lk.append(h('div', { class: 'kv l' }, [
+      h('input', { type: 'text', value: l.icon, maxlength: 4, oninput: ev => { l.icon = ev.target.value; touch(); } }),
+      h('input', { type: 'text', value: l.label, placeholder: 'Label', oninput: ev => { l.label = ev.target.value; touch(); } }),
+      h('input', { type: 'text', value: l.url, placeholder: 'https://… or file path', oninput: ev => { l.url = ev.target.value; touch(); } }),
+      h('button', { class: 'btn sm dan', text: '✕', onclick: () => { cfg.links.splice(i, 1); touch(); drawLk(); } })]))); };
+  drawLk();
+  m.append(h('div', { class: 'card' }, [h('h2', { text: 'App menu links' }), lk, h('button', { class: 'btn sm', text: '+ Add link', onclick: () => { cfg.links.push({ icon: '🔗', label: '', url: '' }); touch(); drawLk(); } })]));
+}
+
+// ═══ PUBLISH ═══
+function validate() {
+  const out = [], ids = new Set(), bad = u => u && !S.safeUrl(u);
+  cfg.announcements.forEach((a, i) => { const n = `Announcement ${i + 1} (${a.title || 'untitled'})`;
+    if (!a.title.trim() && !a.message.trim()) out.push(['err', n + ': needs a title or message']);
+    if (ids.has(a.id)) out.push(['err', n + ': duplicate id ' + a.id]); ids.add(a.id);
+    if (bad(a.linkUrl)) out.push(['err', n + ': link must be http(s)://…']);
+    if (a.linkUrl && !a.linkText) out.push(['warn', n + ': link has no button text (will say "Learn more")']);
+    if (a.startsAt && a.endsAt && Date.parse(a.endsAt) <= Date.parse(a.startsAt)) out.push(['err', n + ': ends before it starts']);
+    if (a.endsAt && Date.parse(a.endsAt) < Date.now() && a.enabled) out.push(['warn', n + ': already expired']);
+    if (a.style === 'popup' && a.type === 'critical' && !a.endsAt) out.push(['warn', n + ': critical pop-up with no end date']); });
+  cfg.links.forEach((l, i) => { if (!l.label.trim() || !l.url.trim()) out.push(['err', `Menu link ${i + 1}: label and URL are required`]); });
+  if (!cfg.app.name.trim()) out.push(['err', 'App name is empty']);
+  const live = cfg.announcements.filter(a => S.statusOf(a) === 'live' && a.style === 'popup').length;
+  if (live > 2) out.push(['warn', `${live} pop-ups are live at once — users see them one after another`]);
+  return out;
+}
+function pagePublish(m) {
+  m.append(h('h1', { text: 'Publish' }), h('p', { class: 'lead', text: 'This page edits a draft in your browser. Nothing goes live until config.json is deployed with the site.' }));
+  const v = validate(), errs = v.filter(x => x[0] === 'err').length;
+  const box = h('div', { class: 'card' }, [h('h2', { text: 'Checks' })]);
+  if (!v.length) box.append(h('div', { class: 'msg ok', text: '✔ No problems found' }));
+  v.forEach(([t, msg]) => box.append(h('div', { class: 'msg ' + t, text: (t === 'err' ? '✖ ' : '⚠ ') + msg })));
+  m.append(box);
+  m.append(h('div', { class: 'card' }, [h('h2', { text: 'config.json' }), h('div', { class: 'row', style: 'margin-bottom:12px' }, [
+    h('button', { class: 'btn pri', text: '⬇ Download config.json', onclick: () => { if (errs && !confirm(errs + ' error(s) found. Download anyway?')) return;
+      const a = h('a', { href: URL.createObjectURL(new Blob([json() + '\n'], { type: 'application/json' })), download: 'config.json' }); document.body.append(a); a.click(); a.remove(); published = json(); touch(); toast('Downloaded — replace config.json in your repo'); } }),
+    h('button', { class: 'btn', text: 'Copy', onclick: () => navigator.clipboard.writeText(json()).then(() => toast('Copied'), () => toast('Copy failed — select the text manually')) }),
+    h('button', { class: 'btn', text: '↻ Load live config', onclick: async () => { if (dirty && !confirm('Replace your unsaved draft with the live version?')) return; const c = await S.fetchConfig(); if (!c) return toast('Could not load config.json from this site'); cfg = c; published = json(); touch(); render(); toast('Loaded live config'); } }),
+    h('label', { class: 'btn', text: 'Import file…' , style: 'cursor:pointer' }, h('input', { type: 'file', accept: '.json,application/json', hidden: true, onchange: async ev => { try { cfg = S.normalize(JSON.parse(await ev.target.files[0].text())); touch(); render(); toast('Imported'); } catch { toast('That file is not valid JSON'); } } })),
+  ]), h('pre', { text: json() })]));
+  m.append(h('div', { class: 'card' }, [h('h2', { text: 'How to go live' }), h('ol', { class: 'steps' }, [
+    h('li', {}, [h('b', { text: 'Download' }), ' config.json above.']),
+    h('li', {}, ['Replace ', h('code', { text: 'config.json' }), ' in the root of your repo (next to ', h('code', { text: 'index.html' }), ') and commit.']),
+    h('li', {}, ['Your host (Cloudflare Pages) redeploys in about 30 s — no code change needed.']),
+    h('li', {}, ['Visitors get the announcement the next time they open the app, or within ~5 minutes if it is already open.']),
+    h('li', {}, ['To test first: commit to your staging branch, check it there, then promote.']),
+  ])]));
+  m.append(h('div', { class: 'card' }, [h('h2', { text: 'Who can open this page?' }), h('p', { class: 'lead', style: 'margin:0', text: 'Anyone who knows the URL can open it, but it cannot publish anything: it only produces a file that you commit yourself. If you would rather hide it, put /admin.html behind Cloudflare Access (Zero Trust → Access → Applications). A separate domain is not needed.' })]));
+}
+
+// ═══ THIS BROWSER ═══
+function pageBrowser(m) {
+  m.append(h('h1', { text: 'This browser' }), h('p', { class: 'lead', text: 'What is stored locally for the app on this device. Useful for testing how announcements look to a first-time visitor.' }));
+  let own = '(none — using site defaults)'; try { const r = localStorage.getItem(APP_CFG_KEY); if (r && r !== '{}') own = JSON.stringify(JSON.parse(r), null, 2); } catch {}
+  m.append(h('div', { class: 'card' }, [h('h2', { text: 'Settings changed by the user here' }), h('pre', { text: own }), h('div', { class: 'row', style: 'margin-top:12px' }, [
+    h('button', { class: 'btn dan', text: 'Reset to site defaults', onclick: () => { try { localStorage.removeItem(APP_CFG_KEY); } catch {} render(); toast('Reset'); } })])]));
+  const dis = S.getDismissed();
+  m.append(h('div', { class: 'card' }, [h('h2', { text: `Dismissed announcements (${dis.length})` }), h('pre', { text: dis.length ? dis.join('\n') : '(none)' }), h('div', { class: 'row', style: 'margin-top:12px' }, [
+    h('button', { class: 'btn', text: 'Forget all (show them again)', onclick: () => { S.clearDismissed(); render(); toast('Cleared'); } })])]));
+  m.append(h('div', { class: 'card' }, [h('h2', { text: 'Draft' }), h('div', { class: 'row' }, [
+    h('button', { class: 'btn dan', text: 'Discard draft & reload live config', onclick: async () => { if (!confirm('Discard your unsaved draft?')) return; try { localStorage.removeItem(DRAFT_KEY); } catch {} const c = await S.fetchConfig(); cfg = c || S.normalize({}); published = json(); dirty = false; render(); toast('Draft discarded'); } })])]));
+}
+
+window.addEventListener('beforeunload', e => { if (dirty) { e.preventDefault(); e.returnValue = ''; } });
+(async () => {
+  const live = await S.fetchConfig();
+  published = live ? JSON.stringify(live, null, 2) : '';
+  if (!loadDraft() && live) cfg = live;
+  dirty = json() !== published; render();
+})();
+</script>
+</body>
+</html>

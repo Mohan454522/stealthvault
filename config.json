@@ -1,0 +1,39 @@
+{
+  "app": {
+    "name": "StealthVault",
+    "logoMain": "STEALTH",
+    "logoAccent": "VAULT",
+    "version": "v6.0.0",
+    "repo": "Mohan454522/stealthvault",
+    "domains": { "Production": "vaults.codes", "Staging": "dev.vaults.codes" }
+  },
+  "defaults": {
+    "chunkSizeMB": 64,
+    "workerCount": 0,
+    "skipSeconds": 10,
+    "autoPlayNext": true,
+    "autoPlayDelay": 5,
+    "prefetchAhead": 2,
+    "previewLimitMB": 2048
+  },
+  "links": [
+    { "icon": "🆘", "label": "Recovery guide", "url": "Recovery_Blueprint.txt" },
+    { "icon": "🐍", "label": "Recovery script (recover.py)", "url": "recover.py" },
+    { "icon": "💻", "label": "Source on GitHub", "url": "https://github.com/Mohan454522/stealthvault" }
+  ],
+  "announcements": [
+    {
+      "id": "welcome-example",
+      "enabled": false,
+      "type": "info",
+      "style": "popup",
+      "title": "Example announcement",
+      "message": "Edit or delete this in Admin → Announcements. Disabled announcements are never shown.",
+      "linkText": "",
+      "linkUrl": "",
+      "startsAt": "",
+      "endsAt": "",
+      "dismissible": true
+    }
+  ]
+}
