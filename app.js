@@ -1,30 +1,30 @@
-/* ═══════════════════════════════════════════════════════════════════════
-   STEALTHVAULT v6 — Definitive Rewrite
-   ─────────────────────────────────────────────────────────────────────
+/* ΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉ
+   STEALTHVAULT v6 ΓÇö Definitive Rewrite
+   ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
    FORMAT V6 (why it's correct):
 
-   [COVER IMAGE BYTES]      ← arbitrary length, stored explicitly
-   [PAYLOAD HEADER]         ← MAGIC + SALT + FILE_COUNT + encrypted metadata
-   [PAYLOAD DATA]           ← sequential encrypted chunks, all files
-   [COVER_SIZE  : 8 bytes]  ← uint64 LE  — exact byte count of cover image
-   [HEADER_SIZE : 4 bytes]  ← uint32 LE  — exact byte count of payload header
-   [END_MARKER  : 8 bytes]  ← unique magic sequence
+   [COVER IMAGE BYTES]      ΓåÉ arbitrary length, stored explicitly
+   [PAYLOAD HEADER]         ΓåÉ MAGIC + SALT + FILE_COUNT + encrypted metadata
+   [PAYLOAD DATA]           ΓåÉ sequential encrypted chunks, all files
+   [COVER_SIZE  : 8 bytes]  ΓåÉ uint64 LE  ΓÇö exact byte count of cover image
+   [HEADER_SIZE : 4 bytes]  ΓåÉ uint32 LE  ΓÇö exact byte count of payload header
+   [END_MARKER  : 8 bytes]  ΓåÉ unique magic sequence
 
-   KEY INVARIANT — chunk positions are computed by arithmetic, not scanning:
+   KEY INVARIANT ΓÇö chunk positions are computed by arithmetic, not scanning:
      dataStart = COVER_SIZE + HEADER_SIZE
      for each file i, chunk j:
-       chunkOffset = dataStart + Σ_{prev chunks} (4 + plainLen + 28)
+       chunkOffset = dataStart + ╬ú_{prev chunks} (4 + plainLen + 28)
        chunkEncLen = plainLen + 28   (12 IV + plaintext + 16 GCM tag, always exact)
 
    This means readMeta never has to scan gigabytes of chunk data.
    It reads the trailer (20 bytes), then the header (always tiny, just metadata),
    and computes every chunk position from file sizes alone.
-═══════════════════════════════════════════════════════════════════════ */
+ΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉ */
 'use strict';
 
-// ═══════════════════════════════════════════════════════════════════════
-// EMBEDDED CRYPTO WORKER  (Blob URL — works from file:// with no server)
-// ═══════════════════════════════════════════════════════════════════════
+// ΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉ
+// EMBEDDED CRYPTO WORKER  (Blob URL ΓÇö works from file:// with no server)
+// ΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉ
 const WORKER_SRC = `
 'use strict';
 let K = null;
@@ -54,7 +54,7 @@ self.onmessage = async ({data:{t,id,...d}}) => {
   } catch(e) { self.postMessage({id,ok:0,e:e.message}); }
 };`;
 
-// ─── Single worker wrapper ────────────────────────────────────────────
+// ΓöÇΓöÇΓöÇ Single worker wrapper ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
 class CryptoWorker {
   constructor() {
     const u = URL.createObjectURL(new Blob([WORKER_SRC],{type:'application/javascript'}));
@@ -76,7 +76,7 @@ class CryptoWorker {
   kill()             { this._w.terminate(); }
 }
 
-// ─── Worker pool — round-robin across N workers ───────────────────────
+// ΓöÇΓöÇΓöÇ Worker pool ΓÇö round-robin across N workers ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
 class WorkerPool {
   constructor(n) { this.ws=Array.from({length:n},()=>new CryptoWorker()); this._i=0; }
   async init(pw, saltArr) { await Promise.all(this.ws.map(w=>w.init(pw,saltArr))); }
@@ -85,9 +85,9 @@ class WorkerPool {
   async rst() { await Promise.all(this.ws.map(w=>w.rst())); }
 }
 
-// ═══════════════════════════════════════════════════════════════════════
+// ΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉ
 // CONSTANTS & CONFIG
-// ═══════════════════════════════════════════════════════════════════════
+// ΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉ
 // V6 format markers
 const MAGIC      = new Uint8Array([0x53,0x56,0x4C,0x54,0x00,0x06,0x00,0x00]); // "SVLT\0\6\0\0"
 const END_MARKER = new Uint8Array([0xDE,0xAD,0x56,0x36,0x00,0x00,0xDE,0xAD]); // unique, cannot appear in JPEG
@@ -97,10 +97,12 @@ const ENC_OVERHEAD = 12 + 16; // AES-GCM IV(12) + GCM tag(16) = 28 bytes, always
 
 // Available chunk sizes (MB → bytes)
 const CHUNK_SIZE_OPTIONS = [16, 32, 64, 128, 256].map(mb => mb * 1024 * 1024);
+// Parallel chunk batch size for decrypt/export — matches worker pool
+const BATCH = 4;
 
-// ── CONFIG: loaded from localStorage, editable from the Settings panel ──
+// ΓöÇΓöÇ CONFIG: loaded from localStorage, editable from the Settings panel ΓöÇΓöÇ
 // IMPORTANT: chunk size is also stored inside each encrypted file's header,
-// so decryption always reads the stored value — not this setting.
+// so decryption always reads the stored value ΓÇö not this setting.
 // This setting only affects NEW encryptions.
 const CONFIG_KEY = 'sv-config-v1';
 const CONFIG_DEFAULTS = {
@@ -129,9 +131,9 @@ function getPreviewMax() { return CONFIG.previewLimitMB * 1024 * 1024; }
 
 const POOL = new WorkerPool(getPoolSz());
 
-// ═══════════════════════════════════════════════════════════════════════
+// ΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉ
 // LOW-LEVEL HELPERS
-// ═══════════════════════════════════════════════════════════════════════
+// ΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉ
 const readBlob = b => new Promise((res,rej) => {
   const fr = new FileReader();
   fr.onload  = () => res(new Uint8Array(fr.result));
@@ -147,7 +149,7 @@ const ownBuf = u8 =>
 const ru32 = (a,o) => ((a[o])|(a[o+1]<<8)|(a[o+2]<<16)|(a[o+3]<<24))>>>0;
 const wu32 = v => { const b=new Uint8Array(4); new DataView(b.buffer).setUint32(0,v>>>0,true); return b; };
 
-// 64-bit LE via BigInt — handles up to 9 petabytes
+// 64-bit LE via BigInt ΓÇö handles up to 9 petabytes
 function wu64(v) {
   const b=new Uint8Array(8); let n=BigInt(Math.floor(v));
   for(let i=0;i<8;i++){b[i]=Number(n&0xFFn);n>>=8n;} return b;
@@ -158,7 +160,7 @@ function ru64(a,o) {
 
 // MIME and icon tables
 function getMime(n){const e=(n.split('.').pop()||'').toLowerCase();return{mp4:'video/mp4',mkv:'video/x-matroska',mov:'video/quicktime',avi:'video/x-msvideo',webm:'video/webm',m4v:'video/x-m4v',mp3:'audio/mpeg',wav:'audio/wav',flac:'audio/flac',aac:'audio/aac',ogg:'audio/ogg',m4a:'audio/x-m4a',jpg:'image/jpeg',jpeg:'image/jpeg',png:'image/png',gif:'image/gif',webp:'image/webp',bmp:'image/bmp',svg:'image/svg+xml',heic:'image/heic',pdf:'application/pdf',txt:'text/plain',zip:'application/zip'}[e]||'application/octet-stream';}
-function getIcon(n){const e=(n.split('.').pop()||'').toLowerCase();return{mp4:'🎬',mkv:'🎬',mov:'🎬',avi:'🎬',webm:'🎬',m4v:'🎬',mp3:'🎵',wav:'🎵',flac:'🎵',aac:'🎵',ogg:'🎵',m4a:'🎵',jpg:'🖼️',jpeg:'🖼️',png:'🖼️',gif:'🖼️',webp:'🖼️',bmp:'🖼️',svg:'🖼️',heic:'🖼️',pdf:'📄',doc:'📝',docx:'📝',xls:'📊',xlsx:'📊',txt:'📃',zip:'🗜️',rar:'🗜️'}[e]||'📁';}
+function getIcon(n){const e=(n.split('.').pop()||'').toLowerCase();return{mp4:'≡ƒÄ¼',mkv:'≡ƒÄ¼',mov:'≡ƒÄ¼',avi:'≡ƒÄ¼',webm:'≡ƒÄ¼',m4v:'≡ƒÄ¼',mp3:'≡ƒÄ╡',wav:'≡ƒÄ╡',flac:'≡ƒÄ╡',aac:'≡ƒÄ╡',ogg:'≡ƒÄ╡',m4a:'≡ƒÄ╡',jpg:'≡ƒû╝∩╕Å',jpeg:'≡ƒû╝∩╕Å',png:'≡ƒû╝∩╕Å',gif:'≡ƒû╝∩╕Å',webp:'≡ƒû╝∩╕Å',bmp:'≡ƒû╝∩╕Å',svg:'≡ƒû╝∩╕Å',heic:'≡ƒû╝∩╕Å',pdf:'≡ƒôä',doc:'≡ƒô¥',docx:'≡ƒô¥',xls:'≡ƒôè',xlsx:'≡ƒôè',txt:'≡ƒôâ',zip:'≡ƒù£∩╕Å',rar:'≡ƒù£∩╕Å'}[e]||'≡ƒôü';}
 const isVid = n=>/\.(mp4|mkv|mov|avi|webm|m4v)$/i.test(n);
 const isAud = n=>/\.(mp3|wav|flac|aac|ogg|m4a)$/i.test(n);
 const isImg = n=>/\.(jpg|jpeg|png|gif|webp|bmp|svg|heic)$/i.test(n);
@@ -169,9 +171,9 @@ function fmtBytes(n){if(n<1024)return n+'B';if(n<1e6)return(n/1024).toFixed(1)+'
 function fmtSpd(b){return b<1e6?(b/1024).toFixed(0)+' KB/s':(b/1e6).toFixed(1)+' MB/s';}
 function fmtEta(r,b){if(b<=0||r<=0)return'';const s=r/b;return s<60?`~${Math.ceil(s)}s`:s<3600?`~${Math.ceil(s/60)}m`:`~${(s/3600).toFixed(1)}h`;}
 
-// ═══════════════════════════════════════════════════════════════════════
+// ΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉ
 // PROGRESS HELPER
-// ═══════════════════════════════════════════════════════════════════════
+// ΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉ
 function makeProgress(barEl, labelEl) {
   let t0 = Date.now();
   return {
@@ -182,36 +184,36 @@ function makeProgress(barEl, labelEl) {
     },
     update(done, total) {
       const spd = done / Math.max((Date.now()-t0)/1000, 0.001);
-      // Cap at 98% — the last 2% is reserved for the "Finalizing" phase below
+      // Cap at 98% ΓÇö the last 2% is reserved for the "Finalizing" phase below
       const pct = total > 0 ? Math.min(Math.round(done/total*100), 98) : 0;
       if (barEl)   { barEl.style.width = pct + '%'; barEl.classList.remove('pulsing'); }
-      if (labelEl) labelEl.textContent = `${fmtBytes(done)} / ${fmtBytes(total)} · ${fmtSpd(spd)} · ${fmtEta(total-done, spd)}`;
+      if (labelEl) labelEl.textContent = `${fmtBytes(done)} / ${fmtBytes(total)} ┬╖ ${fmtSpd(spd)} ┬╖ ${fmtEta(total-done, spd)}`;
     },
     // Call this between finishing the chunk loop and calling writable.close()
     // writable.close() can block for several seconds on large files while the OS flushes
     finalizing() {
       if (barEl)   { barEl.style.width = '99%'; barEl.classList.add('pulsing'); }
-      if (labelEl) labelEl.textContent = 'Finalizing — flushing to disk… (do not close)';
+      if (labelEl) labelEl.textContent = 'Finalizing ΓÇö flushing to diskΓÇª (do not close)';
     },
-    finish(msg = '✔ Done') {
+    finish(msg = 'Γ£ö Done') {
       if (barEl)   { barEl.style.width = '100%'; barEl.classList.remove('pulsing'); }
       if (labelEl) labelEl.textContent = msg;
     }
   };
 }
 
-// ── Folder picker error helper ────────────────────────────────────────
+// ΓöÇΓöÇ Folder picker error helper ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
 // Chrome/Edge block access to system-protected folders (Downloads root, Desktop,
 // C:\, etc.) with a SecurityError or a message containing "system".
 // This gives users a clear, actionable message instead of the raw browser error.
 function handlePickerError(e) {
-  if (e.name === 'AbortError') return; // user cancelled — silent
+  if (e.name === 'AbortError') return; // user cancelled ΓÇö silent
   if (
     e.name === 'SecurityError' ||
     e.message?.toLowerCase().includes('system') ||
     e.message?.toLowerCase().includes('not allowed')
   ) {
-    toast('⚠ Protected folder — create a new folder (e.g. "MyVaults" on your Desktop) and select that instead.', 'error');
+    toast('ΓÜá Protected folder ΓÇö create a new folder (e.g. "MyVaults" on your Desktop) and select that instead.', 'error');
   } else {
     toast('Folder error: ' + e.message, 'error');
   }
@@ -227,11 +229,11 @@ async function safePickDir(opts = {}) {
   }
 }
 
-// ═══════════════════════════════════════════════════════════════════════
-// VAULT I/O — V6 FORMAT
-// ═══════════════════════════════════════════════════════════════════════
+// ΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉ
+// VAULT I/O ΓÇö V6 FORMAT
+// ΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉ
 
-// ── ENCRYPT ──────────────────────────────────────────────────────────
+// ΓöÇΓöÇ ENCRYPT ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
 // Header format: MAGIC(8) + SALT(16) + CHUNK_SIZE(4) + FILE_COUNT(4) + metadata
 // CHUNK_SIZE is stored in the file so decryption always uses the right value,
 // regardless of what the app setting is later.
@@ -244,7 +246,7 @@ async function vaultEncrypt(files, password, coverArrayBuf, outFH, onProgress) {
   const saltArr = Array.from(salt);
   await POOL.init(password, saltArr);
 
-  // 1. Encrypt all metadata (tiny — file names + sizes only)
+  // 1. Encrypt all metadata (tiny ΓÇö file names + sizes only)
   const metaEncs = [];
   for (const f of files) {
     const j  = JSON.stringify({name:f.name, mime:getMime(f.name), size:f.size});
@@ -254,7 +256,7 @@ async function vaultEncrypt(files, password, coverArrayBuf, outFH, onProgress) {
   await POOL.rst();
 
   // 2. Compute header size (needed for trailer before any writing)
-  //    MAGIC(8) + SALT(16) + FILE_COUNT(4) + Σ[META_ENC_LEN(4) + META_ENC]
+  //    MAGIC(8) + SALT(16) + FILE_COUNT(4) + ╬ú[META_ENC_LEN(4) + META_ENC]
   let headerSize = MAGIC.length + 16 + 4;
   for (const me of metaEncs) headerSize += 4 + me.length;
 
@@ -277,7 +279,7 @@ async function vaultEncrypt(files, password, coverArrayBuf, outFH, onProgress) {
     await writable.write(me);
   }
 
-  // Write chunk data — batchSz chunks in parallel, sequential writes
+  // Write chunk data ΓÇö batchSz chunks in parallel, sequential writes
   const totalBytes = files.reduce((s,f) => s+f.size, 0);
   let done=0, t0=Date.now();
 
@@ -302,24 +304,24 @@ async function vaultEncrypt(files, password, coverArrayBuf, outFH, onProgress) {
     }
   }
 
-  // Signal "finalizing" to UI — writable.close() blocks while OS flushes to disk
+  // Signal "finalizing" to UI ΓÇö writable.close() blocks while OS flushes to disk
   if (onProgress) onProgress(null, null);
-  await writable.write(wu64(coverSize));   // ← trailer
-  await writable.write(wu32(headerSize));  // ← trailer
-  await writable.write(END_MARKER);        // ← trailer (unique 8 bytes)
+  await writable.write(wu64(coverSize));   // ΓåÉ trailer
+  await writable.write(wu32(headerSize));  // ΓåÉ trailer
+  await writable.write(END_MARKER);        // ΓåÉ trailer (unique 8 bytes)
   await writable.close();
   if (onProgress) onProgress(totalBytes, totalBytes); // signal 100%
   await POOL.rst();
 }
 
-// ── READ METADATA ────────────────────────────────────────────────────
-// Reads the 20-byte trailer → finds the header (tiny) → decrypts metadata.
+// ΓöÇΓöÇ READ METADATA ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+// Reads the 20-byte trailer ΓåÆ finds the header (tiny) ΓåÆ decrypts metadata.
 // Reads the stored CHUNK_SIZE from the header and uses it for position arithmetic.
-// Never has to scan through chunk data — all positions computed from sizes.
+// Never has to scan through chunk data ΓÇö all positions computed from sizes.
 async function vaultReadMeta(imageFile, password) {
   if (imageFile.size < TRAILER_SZ + MAGIC.length + 20) throw new Error('File too small to be a vault');
 
-  // ── Step 1: read trailer (last 20 bytes), verify END_MARKER
+  // ΓöÇΓöÇ Step 1: read trailer (last 20 bytes), verify END_MARKER
   const trailer = await readBlob(imageFile.slice(imageFile.size - TRAILER_SZ, imageFile.size));
   for (let i=0; i<END_MARKER.length; i++) {
     if (trailer[12+i] !== END_MARKER[i]) throw new Error('Not a StealthVault v6 file');
@@ -332,17 +334,17 @@ async function vaultReadMeta(imageFile, password) {
   if (headerSize < MAGIC.length + 20)
     throw new Error('Corrupted vault: invalid header size');
 
-  // ── Step 2: read entire payload header into memory (always tiny)
+  // ΓöÇΓöÇ Step 2: read entire payload header into memory (always tiny)
   const hdr = await readBlob(imageFile.slice(coverSize, coverSize + headerSize));
 
-  // ── Step 3: verify MAGIC
+  // ΓöÇΓöÇ Step 3: verify MAGIC
   let off = 0;
   for (let i=0; i<MAGIC.length; i++) {
-    if (hdr[off+i] !== MAGIC[i]) throw new Error('Invalid MAGIC — file created with a different version');
+    if (hdr[off+i] !== MAGIC[i]) throw new Error('Invalid MAGIC ΓÇö file created with a different version');
   }
   off += MAGIC.length;
 
-  // ── Step 4: read salt → derive key → decrypt metadata
+  // ΓöÇΓöÇ Step 4: read salt ΓåÆ derive key ΓåÆ decrypt metadata
   const salt    = hdr.slice(off, off+16); off += 16;
   const saltArr = Array.from(salt);
 
@@ -364,61 +366,46 @@ async function vaultReadMeta(imageFile, password) {
       await POOL.rst();
       throw new Error('Wrong password');
     }
-    // Store chunk size on each item from current global settings — decryptFull and prefetch use this
+    // Store chunk size on each item from current global settings ΓÇö decryptFull and prefetch use this
     items.push({ name:meta.name, mime:meta.mime||getMime(meta.name), size:meta.size, salt:saltArr, chunkSz:getChunkSz(), imageFile });
   }
   await POOL.rst();
 
-  // ── Step 5: auto-detect real chunk size from first chunk's encrypted length, then
-  //           compute all chunk positions arithmetically.
-  // Why: old vaults don't store the chunk size in the header. We detect it by reading
-  // the first 4-byte length prefix of the first chunk and reverse-calculating:
-  //   encLen = plainLen + ENC_OVERHEAD  →  plainLen = encLen - ENC_OVERHEAD
-  // That plainLen IS the chunk size for all but the last chunk.
+  // Step 5: auto-detect chunk size from first encrypted chunk, then compute offsets.
+  // Old vaults do not store chunk size in header, so we read the first 4-byte
+  // length prefix and reverse: encLen - ENC_OVERHEAD = actual chunk size used.
   const dataStart = coverSize + headerSize;
   let pos = dataStart;
-
   for (const item of items) {
-    if (item.size === 0) {
-      item.nChunks = 0; item.chunkOffsets = []; continue;
-    }
-
-    // Read first chunk length prefix to detect the real chunk size
+    if (item.size === 0) { item.nChunks = 0; item.chunkOffsets = []; continue; }
     try {
       const lb = await readBlob(imageFile.slice(pos, pos + 4));
       const firstEncLen = ru32(lb, 0);
-      const detectedChunkSz = firstEncLen - ENC_OVERHEAD;
-      // Sanity check: must be a known chunk size between 1 MB and 512 MB
-      if (detectedChunkSz >= 1*1024*1024 && detectedChunkSz <= 512*1024*1024) {
-        item.chunkSz = detectedChunkSz;
-      }
-      // else: keep whatever getChunkSz() returned
-    } catch { /* keep default */ }
-
+      const detected = firstEncLen - ENC_OVERHEAD;
+      if (detected >= 1*1024*1024 && detected <= 512*1024*1024) item.chunkSz = detected;
+    } catch { /* keep settings default */ }
     const nChunks = Math.ceil(item.size / item.chunkSz);
-    item.nChunks      = nChunks;
-    item.chunkOffsets = [];
+    item.nChunks = nChunks; item.chunkOffsets = [];
     for (let ci = 0; ci < nChunks; ci++) {
       item.chunkOffsets.push(pos);
-      const plainLen = Math.min(item.chunkSz, item.size - ci * item.chunkSz);
-      pos += 4 + plainLen + ENC_OVERHEAD;
+      pos += 4 + Math.min(item.chunkSz, item.size - ci * item.chunkSz) + ENC_OVERHEAD;
     }
   }
 
   return items;
 }
 
-// ── DECRYPT FULL ─────────────────────────────────────────────────────
+
+// ΓöÇΓöÇ DECRYPT FULL ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
 // Decrypts all chunks into a single Uint8Array (for in-browser playback).
-// Uses BATCH parallel decryptions. Peak RAM ≈ file.size + BATCH×128MB.
+// Uses BATCH parallel decryptions. Peak RAM Γëê file.size + BATCH├ù128MB.
 async function vaultDecryptFull(item, password, pool, onProgress) {
   await pool.init(password, item.salt);
   const result = new Uint8Array(item.size);
   let writeOff=0, done=0, t0=Date.now();
 
-  const batchSz = getPoolSz();
-  for (let base=0; base<item.nChunks; base+=batchSz) {
-    const bEnd = Math.min(base+batchSz, item.nChunks);
+  for (let base=0; base<item.nChunks; base+=BATCH) {
+    const bEnd = Math.min(base+BATCH, item.nChunks);
     // Read encrypted chunks in parallel
     const readPs = [];
     for (let ci=base; ci<bEnd; ci++) {
@@ -436,10 +423,9 @@ async function vaultDecryptFull(item, password, pool, onProgress) {
     // Copy results into pre-allocated output buffer
     for (let i=0; i<decPs.length; i++) {
       const plain = await decPs[i];
-      const plainU8 = new Uint8Array(plain);
-      result.set(plainU8, writeOff);
-      writeOff += plain.byteLength;
-      done     += plain.byteLength;
+      result.set(plain, writeOff);
+      writeOff += plain.length;
+      done     += plain.length;
       if (onProgress) onProgress(done, item.size);
     }
   }
@@ -447,9 +433,9 @@ async function vaultDecryptFull(item, password, pool, onProgress) {
   return result;
 }
 
-// ── EXPORT TO FILE ───────────────────────────────────────────────────
+// ΓöÇΓöÇ EXPORT TO FILE ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
 // Streams decrypted chunks directly to disk. Never accumulates in RAM.
-// Peak RAM ≈ BATCH × 128 MB, regardless of file size.
+// Peak RAM Γëê BATCH ├ù 128 MB, regardless of file size.
 async function vaultExportItem(item, password) {
   let fh;
   try {
@@ -465,17 +451,16 @@ async function vaultExportItem(item, password) {
     document.getElementById('viewer-dec-label')
   );
   document.getElementById('viewer-loading').classList.remove('hidden');
-  document.getElementById('vl-icon').textContent = '💾';
+  document.getElementById('vl-icon').textContent = '≡ƒÆ╛';
   document.getElementById('vl-name').textContent = 'Exporting ' + item.name;
-  prog.start('Starting export…');
+  prog.start('Starting exportΓÇª');
 
   await POOL.init(password, item.salt);
   const writable = await fh.createWritable();
   let done=0;
 
-  const batchSz = getPoolSz();
-  for (let base=0; base<item.nChunks; base+=batchSz) {
-    const bEnd = Math.min(base+batchSz, item.nChunks);
+  for (let base=0; base<item.nChunks; base+=BATCH) {
+    const bEnd = Math.min(base+BATCH, item.nChunks);
     const readPs = [];
     for (let ci=base; ci<bEnd; ci++) {
       const absOff = item.chunkOffsets[ci];
@@ -490,8 +475,8 @@ async function vaultExportItem(item, password) {
     const decPs = encChunks.map(ec => POOL.dec(ec.buffer));
     for (let i=0; i<decPs.length; i++) {
       const plain = await decPs[i];
-      await writable.write(new Uint8Array(plain));   // write directly to disk
-      done += plain.byteLength;
+      await writable.write(plain);   // write directly to disk
+      done += plain.length;
       prog.update(done, item.size);
     }
   }
@@ -502,8 +487,8 @@ async function vaultExportItem(item, password) {
   return true;
 }
 
-// ── CHANGE PASSWORD (streaming — RAM ≈ 2 × CHUNK_SZ) ────────────────
-// Decrypts each chunk with old key → re-encrypts with new key → writes.
+// ΓöÇΓöÇ CHANGE PASSWORD (streaming ΓÇö RAM Γëê 2 ├ù CHUNK_SZ) ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+// Decrypts each chunk with old key ΓåÆ re-encrypts with new key ΓåÆ writes.
 // No full file ever in RAM at once.
 async function vaultChangePassword(imageFile, oldPw, newPw, outFH, onProgress) {
   const items = await vaultReadMeta(imageFile, oldPw);
@@ -539,7 +524,7 @@ async function vaultChangePassword(imageFile, oldPw, newPw, outFH, onProgress) {
   await writable.write(wu32(items.length));
   for (const me of metaEncs) { await writable.write(wu32(me.length)); await writable.write(me); }
 
-  // Re-encrypt chunks: old-key decrypt → new-key encrypt
+  // Re-encrypt chunks: old-key decrypt ΓåÆ new-key encrypt
   const decW = new CryptoWorker();
   const totalBytes = items.reduce((s,it) => s+it.size, 0);
   let done=0;
@@ -567,11 +552,11 @@ async function vaultChangePassword(imageFile, oldPw, newPw, outFH, onProgress) {
   decW.kill(); encW.kill();
 }
 
-// ═══════════════════════════════════════════════════════════════════════
+// ΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉ
 // PREFETCH MANAGER
-// Each item gets its OWN CryptoWorker → no shared state, no races.
+// Each item gets its OWN CryptoWorker ΓåÆ no shared state, no races.
 // Keeps window of [N-1, N, N+1, N+2] items pre-decrypted.
-// ═══════════════════════════════════════════════════════════════════════
+// ΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉ
 class PrefetchManager {
   constructor() { this._cache=new Map(); this._items=[]; this._pw=''; }
 
@@ -597,7 +582,7 @@ class PrefetchManager {
       this._startOne(item);
     }
     updatePrefetchStatus();
-    setTimeout(renderGallery, 0); // refresh ⚡ indicators
+    setTimeout(renderGallery, 0); // refresh ΓÜí indicators
   }
 
   _startOne(item) {
@@ -631,7 +616,7 @@ class PrefetchManager {
     return !!(st && st.url);
   }
 
-  // Get URL — instant from cache, or wait for in-progress prefetch, or decrypt now
+  // Get URL ΓÇö instant from cache, or wait for in-progress prefetch, or decrypt now
   async get(idx, onProgress) {
     const item = this._items[idx];
     if (!item) return null;
@@ -639,10 +624,10 @@ class PrefetchManager {
 
     const st = this._cache.get(item);
     if (st) {
-      if (st.url) return st.url;       // ⚡ instant
+      if (st.url) return st.url;       // ΓÜí instant
       return st.promise;               // wait for ongoing prefetch
     }
-    // Not cached — decrypt now with POOL (user is waiting)
+    // Not cached ΓÇö decrypt now with POOL (user is waiting)
     const data = await vaultDecryptFull(item, this._pw, POOL, onProgress);
     const url  = URL.createObjectURL(new Blob([data], {type:item.mime}));
     this._cache.set(item, {url, worker:null, promise:Promise.resolve(url)});
@@ -659,9 +644,9 @@ class PrefetchManager {
 }
 const PM = new PrefetchManager();
 
-// ═══════════════════════════════════════════════════════════════════════
+// ΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉ
 // TOAST
-// ═══════════════════════════════════════════════════════════════════════
+// ΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉ
 let _tt;
 function toast(msg, type='') {
   const el = document.getElementById('toast');
@@ -669,12 +654,12 @@ function toast(msg, type='') {
   clearTimeout(_tt); _tt = setTimeout(() => el.classList.add('hidden'), 3500);
 }
 
-// ═══════════════════════════════════════════════════════════════════════
+// ΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉ
 // UI INITIALIZATION
-// ═══════════════════════════════════════════════════════════════════════
+// ΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉ
 
 
-// Tabs — with persistence across page reloads
+// Tabs ΓÇö with persistence across page reloads
 const _TAB_KEY = 'sv-last-tab';
 function switchTab(tabName) {
   document.querySelectorAll('.tab-btn').forEach(x => x.classList.remove('active'));
@@ -699,7 +684,7 @@ document.querySelectorAll('.tab-btn').forEach(b => b.addEventListener('click', (
   b.addEventListener('click', () => {
     const el = document.getElementById(id);
     el.type = el.type==='password' ? 'text' : 'password';
-    b.textContent = el.type==='password' ? '👁' : '🙈';
+    b.textContent = el.type==='password' ? '≡ƒæü' : '≡ƒÖê';
   });
 });
 
@@ -724,7 +709,7 @@ document.querySelectorAll('.mode-card').forEach(card => {
   });
 });
 
-// Worker badge — updated by updateWorkerBadge() after CONFIG loads
+// Worker badge ΓÇö updated by updateWorkerBadge() after CONFIG loads
 document.addEventListener('DOMContentLoaded', () => {
   CONFIG = loadConfig();
   if (typeof updateWorkerBadge === 'function') updateWorkerBadge();
@@ -733,33 +718,33 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 
-// ═══════════════════════════════════════════════════════════════════════
-// ══ HIDE FILES ══════════════════════════════════════════════════════════
-// ═══════════════════════════════════════════════════════════════════════
+// ΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉ
+// ΓòÉΓòÉ HIDE FILES ΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉ
+// ΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉ
 let secretFiles = [], dummyFile = null, outputDirHandle = null, hideMode = 'one-to-one';
 
-// Pick files — REPLACE selection (fresh start)
+// Pick files ΓÇö REPLACE selection (fresh start)
 document.getElementById('btn-pick-secret-files').addEventListener('click', () => document.getElementById('input-secret-files').click());
 document.getElementById('input-secret-files').addEventListener('change', function() {
   secretFiles = []; // Replace mode: clear first
   addSecretFiles(Array.from(this.files)); this.value = '';
 });
 
-// Add More — APPEND to existing selection without clearing
+// Add More ΓÇö APPEND to existing selection without clearing
 document.getElementById('btn-add-more-files').addEventListener('click', () => document.getElementById('input-add-more-files').click());
 document.getElementById('input-add-more-files').addEventListener('change', function() {
   const before = secretFiles.length;
   addSecretFiles(Array.from(this.files)); this.value = '';
   const added = secretFiles.length - before;
-  if (added > 0) toast(`➕ Added ${added} file(s). Total: ${secretFiles.length}`, 'success');
+  if (added > 0) toast(`Γ₧ò Added ${added} file(s). Total: ${secretFiles.length}`, 'success');
   else toast('Those files are already in the list.', 'error');
 });
 
-// Pick folder (recursively) — always APPENDS
+// Pick folder (recursively) ΓÇö always APPENDS
 document.getElementById('btn-pick-secret-folder').addEventListener('click', async () => {
   try {
     const dir = await window.showDirectoryPicker({mode:'read'});
-    toast('Scanning folder…');
+    toast('Scanning folderΓÇª');
     const files = await scanDir(dir);
     const before = secretFiles.length;
     addSecretFiles(files);
@@ -803,7 +788,7 @@ function renderSecretsList() {
   });
   const total = secretFiles.reduce((s,f)=>s+f.size,0);
   sm.className = 'file-summary ok'; sm.classList.toggle('hidden', !secretFiles.length);
-  sm.textContent = secretFiles.length ? `${secretFiles.length} file(s) selected · ${fmtBytes(total)} total` : '';
+  sm.textContent = secretFiles.length ? `${secretFiles.length} file(s) selected ┬╖ ${fmtBytes(total)} total` : '';
 }
 
 // Pick dummy cover image
@@ -814,7 +799,7 @@ document.getElementById('input-dummy').addEventListener('change', function() {
   const dp = document.getElementById('dummy-preview');
   if (dummyFile) {
     dn.className = 'file-summary ok';
-    dn.textContent = `✔ ${dummyFile.name}  (${fmtBytes(dummyFile.size)})`;
+    dn.textContent = `Γ£ö ${dummyFile.name}  (${fmtBytes(dummyFile.size)})`;
     dp.innerHTML = `<img src="${URL.createObjectURL(dummyFile)}" alt="cover" />`;
   } else {
     dn.className = 'file-summary hidden'; dn.textContent = '';
@@ -830,9 +815,9 @@ document.getElementById('hide-pw-confirm').addEventListener('input', function() 
   if (!this.value) { hint.classList.add('hidden'); hint.className = 'step-inline-hint hidden'; return; }
   hint.classList.remove('hidden');
   if (this.value === pw1) {
-    hint.className = 'step-inline-hint ok'; hint.textContent = '✔ Passphrases match';
+    hint.className = 'step-inline-hint ok'; hint.textContent = 'Γ£ö Passphrases match';
   } else {
-    hint.className = 'step-inline-hint err'; hint.textContent = '✖ Passphrases do not match';
+    hint.className = 'step-inline-hint err'; hint.textContent = 'Γ£û Passphrases do not match';
   }
 });
 
@@ -845,11 +830,11 @@ document.getElementById('btn-pick-output-folder').addEventListener('click', asyn
     outputDirHandle = await window.showDirectoryPicker({mode:'readwrite'});
     const el = document.getElementById('output-folder-status');
     el.className = 'folder-status loaded';
-    el.textContent = `✔ Output folder: "${outputDirHandle.name}"`;
+    el.textContent = `Γ£ö Output folder: "${outputDirHandle.name}"`;
   } catch(e) {
-    if (e.name === 'AbortError') return; // user cancelled — do nothing
+    if (e.name === 'AbortError') return; // user cancelled ΓÇö do nothing
     if (e.name === 'SecurityError' || e.message?.includes('system')) {
-      toast('⚠ That folder is system-protected. Create a new folder (e.g. "MyVaults" on Desktop) and select that instead.', 'error');
+      toast('ΓÜá That folder is system-protected. Create a new folder (e.g. "MyVaults" on Desktop) and select that instead.', 'error');
     } else {
       toast('Folder error: ' + e.message, 'error');
     }
@@ -865,14 +850,14 @@ function renderOutputNames() {
 
   if (hideMode === 'all-in-one') {
     const row = document.createElement('div'); row.className = 'output-name-row';
-    row.innerHTML = `<span class="orig-name">${secretFiles.length} files bundled together</span><span class="arrow">→</span><input class="out-name-input" data-idx="bundle" value="vault_bundle.${ext}" />`;
+    row.innerHTML = `<span class="orig-name">${secretFiles.length} files bundled together</span><span class="arrow">ΓåÆ</span><input class="out-name-input" data-idx="bundle" value="vault_bundle.${ext}" />`;
     list.appendChild(row); return;
   }
   secretFiles.forEach((f, i) => {
     const base = f.name.replace(/\.[^/.]+$/,'');
     const def  = hideMode==='same-dummy' ? `cover_${String(i+1).padStart(3,'0')}.${ext}` : `${base}.${ext}`;
     const row  = document.createElement('div'); row.className = 'output-name-row';
-    row.innerHTML = `<span class="orig-name" title="${f.name}">${f.name}</span><span class="arrow">→</span><input class="out-name-input" data-idx="${i}" value="${def}" />`;
+    row.innerHTML = `<span class="orig-name" title="${f.name}">${f.name}</span><span class="arrow">ΓåÆ</span><input class="out-name-input" data-idx="${i}" value="${def}" />`;
     list.appendChild(row);
   });
 }
@@ -882,7 +867,7 @@ function getOutName(idx) {
   return el ? (el.value.trim() || el.defaultValue) : `file_${idx}.jpg`;
 }
 
-// ── Stitch / Encrypt ─────────────────────────────────────────────────
+// ΓöÇΓöÇ Stitch / Encrypt ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
 document.getElementById('btn-stitch').addEventListener('click', async () => {
   const pw1 = document.getElementById('hide-pw').value.trim();
   const pw2 = document.getElementById('hide-pw-confirm').value.trim();
@@ -907,28 +892,28 @@ document.getElementById('btn-stitch').addEventListener('click', async () => {
   for (let i=0; i<batches.length; i++) {
     const batch = batches[i], name = outNames[i];
     const total = batch.reduce((s,f)=>s+f.size,0);
-    prog.start(`[${i+1}/${batches.length}] Encrypting ${name}…`);
+    prog.start(`[${i+1}/${batches.length}] Encrypting ${name}ΓÇª`);
     try {
       const outFH = await outputDirHandle.getFileHandle(name, {create:true});
       await vaultEncrypt(batch, pw1, dummyBuf, outFH, (done, tot) => {
         if (done === null) prog.finalizing();
         else               prog.update(done, tot);
       });
-      addResultRow(true, `${name}  (${fmtBytes(total)})  ✔ saved to "${outputDirHandle.name}"`);
+      addResultRow(true, `${name}  (${fmtBytes(total)})  Γ£ö saved to "${outputDirHandle.name}"`);
       okCount++;
     } catch(err) {
       addResultRow(false, `${name}: ${err.message}`);
     }
   }
 
-  prog.finish(`✔ All ${batches.length} file(s) encrypted and saved!`);
+  prog.finish(`Γ£ö All ${batches.length} file(s) encrypted and saved!`);
   btn.disabled = false;
 
   // Show success banner
   if (okCount > 0) {
     const banner = document.getElementById('encrypt-done-banner');
     const text   = document.getElementById('encrypt-done-text');
-    text.textContent = `✔ ${okCount} vault image${okCount!==1?'s':''} saved to "${outputDirHandle.name}". Open that folder to find your encrypted files.`;
+    text.textContent = `Γ£ö ${okCount} vault image${okCount!==1?'s':''} saved to "${outputDirHandle.name}". Open that folder to find your encrypted files.`;
     banner.classList.remove('hidden');
   }
   toast('Encryption complete!', 'success');
@@ -938,13 +923,13 @@ document.getElementById('btn-stitch').addEventListener('click', async () => {
 function addResultRow(ok, msg) {
   const d = document.createElement('div');
   d.className = 'stitch-result-item ' + (ok ? 'ok' : 'err');
-  d.textContent = (ok ? '✔ ' : '✖ ') + msg;
+  d.textContent = (ok ? 'Γ£ö ' : 'Γ£û ') + msg;
   document.getElementById('stitch-results').appendChild(d);
 }
 
-// ═══════════════════════════════════════════════════════════════════════
-// ══ OPEN VAULT ══════════════════════════════════════════════════════════
-// ═══════════════════════════════════════════════════════════════════════
+// ΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉ
+// ΓòÉΓòÉ OPEN VAULT ΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉ
+// ΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉ
 let vaultEntries=[], unlockedItems=[], filteredItems=[], vaultPw='';
 
 // Pick single image(s)
@@ -959,9 +944,9 @@ document.getElementById('btn-open-file').addEventListener('click', async () => {
     vls.className = 'folder-status loaded';
     if (picks.length === 1) {
       const f = await picks[0].getFile();
-      vls.textContent = `✔ ${picks[0].name}  (${fmtBytes(f.size)})`;
+      vls.textContent = `Γ£ö ${picks[0].name}  (${fmtBytes(f.size)})`;
     } else {
-      vls.textContent = `✔ ${picks.length} vault images selected`;
+      vls.textContent = `Γ£ö ${picks.length} vault images selected`;
     }
   } catch(e) { if (e.name!=='AbortError') toast('Error: '+e.message,'error'); }
 });
@@ -976,7 +961,7 @@ document.getElementById('btn-open-folder').addEventListener('click', async () =>
         vaultEntries.push({name, handle});
     const vls = document.getElementById('vault-load-status');
     vls.className = 'folder-status loaded';
-    vls.textContent = `✔ Vault folder: "${dir.name}" (${vaultEntries.length} image${vaultEntries.length!==1?'s':''})`;
+    vls.textContent = `Γ£ö Vault folder: "${dir.name}" (${vaultEntries.length} image${vaultEntries.length!==1?'s':''})`;
   } catch(e) { if (e.name!=='AbortError') toast('Error: '+e.message,'error'); }
 });
 
@@ -988,7 +973,7 @@ document.getElementById('btn-unlock').addEventListener('click', async () => {
   if (!pw)                  return toast('Enter your passphrase.', 'error');
 
   const btn = document.getElementById('btn-unlock');
-  btn.disabled = true; btn.textContent = '⏳ Reading vault…';
+  btn.disabled = true; btn.textContent = 'ΓÅ│ Reading vaultΓÇª';
 
   const items   = [];
   let   skipped = 0;
@@ -998,26 +983,26 @@ document.getElementById('btn-unlock').addEventListener('click', async () => {
       const found = await vaultReadMeta(file, pw);
       items.push(...found);
     } catch {
-      // Wrong password or not a vault file — silently skip this image
+      // Wrong password or not a vault file ΓÇö silently skip this image
       skipped++;
     }
   }
 
-  btn.disabled = false; btn.textContent = '🔓 Unlock Vault';
+  btn.disabled = false; btn.textContent = '≡ƒöô Unlock Vault';
 
   if (!items.length) {
     errEl.classList.remove('hidden');
     errEl.textContent = skipped > 0
-      ? `Incorrect password — none of the ${skipped} selected image(s) matched.`
+      ? `Incorrect password ΓÇö none of the ${skipped} selected image(s) matched.`
       : 'No StealthVault v6 files found in the selection.';
     return;
   }
 
-  // Some files opened, some may have been skipped (different passwords — that's fine)
+  // Some files opened, some may have been skipped (different passwords ΓÇö that's fine)
   if (skipped > 0) {
-    toast(`${items.length} file(s) unlocked · ${skipped} image(s) skipped (different password or not a vault).`, 'success');
+    toast(`${items.length} file(s) unlocked ┬╖ ${skipped} image(s) skipped (different password or not a vault).`, 'success');
   } else {
-    toast(`🔓 ${items.length} file(s) unlocked.`, 'success');
+    toast(`≡ƒöô ${items.length} file(s) unlocked.`, 'success');
   }
 
   vaultPw = pw; unlockedItems = items; filteredItems = [...items];
@@ -1046,9 +1031,9 @@ document.getElementById('btn-lock-vault').addEventListener('click', () => {
   toast('Vault locked. Memory cleared.');
 });
 
-// ═══════════════════════════════════════════════════════════════════════
+// ΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉ
 // INLINE CHANGE PASSWORD (inside Open Vault tab)
-// ═══════════════════════════════════════════════════════════════════════
+// ΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉ
 let inlineCpwDir = null;
 
 document.getElementById('btn-toggle-inline-cpw').addEventListener('click', () => {
@@ -1073,7 +1058,7 @@ document.getElementById('btn-toggle-inline-cpw').addEventListener('click', () =>
   b.addEventListener('click', () => {
     const el = document.getElementById(id);
     el.type = el.type==='password' ? 'text' : 'password';
-    b.textContent = el.type==='password' ? '👁' : '🙈';
+    b.textContent = el.type==='password' ? '≡ƒæü' : '≡ƒÖê';
   });
 });
 
@@ -1082,7 +1067,7 @@ document.getElementById('btn-inline-cpw-folder').addEventListener('click', async
     inlineCpwDir = await window.showDirectoryPicker({mode:'readwrite'});
     const el = document.getElementById('inline-cpw-folder-status');
     el.className = 'folder-status loaded';
-    el.textContent = `✔ "${inlineCpwDir.name}"`;
+    el.textContent = `Γ£ö "${inlineCpwDir.name}"`;
   } catch(e) { if (e.name!=='AbortError') toast('Error: '+e.message,'error'); }
 });
 
@@ -1114,7 +1099,7 @@ document.getElementById('btn-inline-cpw-go').addEventListener('click', async () 
 
   for (let i=0; i<sources.length; i++) {
     const src = sources[i];
-    prog.start(`[${i+1}/${sources.length}] ${src.name}…`);
+    prog.start(`[${i+1}/${sources.length}] ${src.name}ΓÇª`);
     try {
       const outFH = await inlineCpwDir.getFileHandle(src.name, {create:true});
       await vaultChangePassword(src.file, oldPw, newPw, outFH, (done, tot) => {
@@ -1123,17 +1108,17 @@ document.getElementById('btn-inline-cpw-go').addEventListener('click', async () 
       });
       const row = document.createElement('div');
       row.className = 'stitch-result-item ok';
-      row.textContent = `✔ ${src.name} — password changed`;
+      row.textContent = `Γ£ö ${src.name} ΓÇö password changed`;
       document.getElementById('inline-cpw-results').appendChild(row);
     } catch(err) {
       const row = document.createElement('div');
       row.className = 'stitch-result-item err';
-      row.textContent = `✖ ${src.name}: ${err.message}`;
+      row.textContent = `Γ£û ${src.name}: ${err.message}`;
       document.getElementById('inline-cpw-results').appendChild(row);
     }
   }
 
-  prog.finish(`✔ Done — ${sources.length} vault image(s) updated. New copies saved to "${inlineCpwDir.name}".`);
+  prog.finish(`Γ£ö Done ΓÇö ${sources.length} vault image(s) updated. New copies saved to "${inlineCpwDir.name}".`);
   btn.disabled = false;
   toast('Password changed! Load the new copies to continue.', 'success');
   // Update vaultPw in memory so the currently-open vault still works
@@ -1141,9 +1126,9 @@ document.getElementById('btn-inline-cpw-go').addEventListener('click', async () 
 });
 
 
-// ═══════════════════════════════════════════════════════════════════════
+// ΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉ
 // GALLERY
-// ═══════════════════════════════════════════════════════════════════════
+// ΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉ
 let isListView = false;
 
 document.getElementById('btn-grid-view').addEventListener('click', () => {
@@ -1185,44 +1170,33 @@ function renderGallery() {
     const info = document.createElement('div'); info.className = 'file-card-info';
     const ready = PM.isReady(filteredItems.indexOf(f));
     info.innerHTML = `<div class="file-card-name" title="${f.name}">${f.name}</div>
-      <div class="file-card-meta">${fmtBytes(f.size)}${ready?' · ⚡':''}</div>`;
+      <div class="file-card-meta">${fmtBytes(f.size)}${ready?' ┬╖ ΓÜí':''}</div>`;
 
     card.appendChild(thumb); card.appendChild(badge); card.appendChild(info);
     grid.appendChild(card);
   });
 }
 
-// ═══════════════════════════════════════════════════════════════════════
+// ΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉ
 // VIEWER
-// ═══════════════════════════════════════════════════════════════════════
+// ΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉ
 let curIdx=0, activeMedia=null;
-
-window.addEventListener('popstate', (e) => {
-  if (!document.getElementById('viewer-modal').classList.contains('hidden')) {
-    closeViewer(true);
-  }
-});
 
 function openViewer(idx) {
   curIdx = idx;
   document.getElementById('viewer-modal').classList.remove('hidden');
-  history.pushState({ viewer: true }, '', '#viewer');
   loadViewerContent();
   updateViewerNav();
   PM.triggerAround(idx);
 }
 
-function closeViewer(fromPopState = false) {
-  if (document.getElementById('viewer-modal').classList.contains('hidden')) return;
+function closeViewer() {
   document.getElementById('viewer-modal').classList.add('hidden');
   if (activeMedia && activeMedia.pause) activeMedia.pause();
   activeMedia = null;
   document.getElementById('viewer-content').innerHTML = '';
   document.getElementById('viewer-nav-dots').innerHTML = '';
   document.getElementById('viewer-loading').classList.add('hidden');
-  if (fromPopState !== true && window.location.hash === '#viewer') {
-    history.back();
-  }
 }
 
 async function loadViewerContent() {
@@ -1251,7 +1225,7 @@ async function loadViewerContent() {
     document.getElementById('vl-icon').textContent = getIcon(f.name);
     document.getElementById('vl-name').textContent = f.name;
     const prog = makeProgress(document.getElementById('viewer-dec-bar'), document.getElementById('viewer-dec-label'));
-    prog.start('Decrypting…');
+    prog.start('DecryptingΓÇª');
     loading.classList.remove('hidden');
   }
 
@@ -1262,30 +1236,23 @@ async function loadViewerContent() {
     });
   } catch(err) {
     loading.classList.add('hidden');
-    content.innerHTML = `<div class="unsupported-file"><div class="big-icon">⚠️</div><p>Decryption failed: ${err.message}</p></div>`;
+    content.innerHTML = `<div class="unsupported-file"><div class="big-icon">ΓÜá∩╕Å</div><p>Decryption failed: ${err.message}</p></div>`;
     return;
   }
 
   loading.classList.add('hidden');
 
   if (!url) {
-    const btnId = 'inline-export-btn-' + Date.now();
-    content.innerHTML = <div class="unsupported-file" style="gap:16px;">
-      <div class="big-icon" style="font-size:56px;">$(getIcon(f.name))</div>
-      <p style="font-size:16px;font-weight:700;margin:0;">$(.name)</p>
-      <p style="color:var(--text2);margin:0;">$(mtBytes(f.size)) � too large to preview in browser</p>
-      <button id="${btnId}" class="btn-primary" style="margin-top:8px;padding:10px 28px;font-size:15px;border-radius:10px;">
-        ?? Export &amp; Save to disk
-      </button>
-      <p style="color:var(--text2);font-size:12px;margin:0;">The file will be decrypted and saved directly to disk without using extra RAM.</p>
-    </div>;
-    document.getElementById(btnId)?.addEventListener('click', () => {
-      document.getElementById('btn-export')?.click();
-    });
+    content.innerHTML = `<div class="unsupported-file">
+      <div class="big-icon">${getIcon(f.name)}</div>
+      <p style="font-size:15px;font-weight:700;">${f.name}</p>
+      <p style="color:var(--text2);">${fmtBytes(f.size)} ΓÇö too large to preview in browser.</p>
+      <p style="color:var(--text2);margin-top:8px;">Click <strong style="color:var(--accent)">Export</strong> to save the decrypted file to disk.</p>
+    </div>`;
     return;
   }
 
-  // ── Render based on file type ──
+  // ΓöÇΓöÇ Render based on file type ΓöÇΓöÇ
   if (isVid(f.name)) {
     // If currently fullscreen, swap the video source without exiting fullscreen
     const wasFullscreen = document.fullscreenElement;
@@ -1301,7 +1268,7 @@ async function loadViewerContent() {
   } else if (isAud(f.name)) {
     const wrap = document.createElement('div');
     wrap.style.cssText = 'display:flex;flex-direction:column;align-items:center;width:100%;padding:20px 0;';
-    const art = document.createElement('div'); art.className = 'audio-art'; art.textContent = '🎵';
+    const art = document.createElement('div'); art.className = 'audio-art'; art.textContent = '≡ƒÄ╡';
     const name = document.createElement('div');
     name.style.cssText = 'font-size:15px;font-weight:700;margin-bottom:16px;';
     name.textContent = f.name;
@@ -1318,7 +1285,7 @@ async function loadViewerContent() {
   } else if (isImg(f.name)) {
     const img = document.createElement('img'); img.src = url; img.alt = f.name;
     content.appendChild(img);
-    setSkipBtnsActive(false); // no skip for images — arrows navigate instead
+    setSkipBtnsActive(false); // no skip for images ΓÇö arrows navigate instead
     setTimeout(renderGallery, 0);
 
   } else if (isPDF(f.name)) {
@@ -1353,7 +1320,7 @@ function updateViewerNav() {
     for (let i=0; i<N; i++) {
       const d = document.createElement('div');
       d.className = 'nav-dot' + (i===curIdx?' active':'') + (PM.isReady(i)?' prefetched':'');
-      d.title = filteredItems[i].name + (PM.isReady(i)?' ⚡':'');
+      d.title = filteredItems[i].name + (PM.isReady(i)?' ΓÜí':'');
       d.addEventListener('click', () => navigateTo(i));
       dotsEl.appendChild(d);
     }
@@ -1366,11 +1333,11 @@ function updateViewerNav() {
 function updatePrefetchStatus() {
   const el = document.getElementById('prefetch-status'); if (!el) return;
   const parts = [];
-  if (PM.isReady(curIdx+1)) parts.push('⚡ Next ready');
-  else if (filteredItems[curIdx+1] && PM._cache.has(filteredItems[curIdx+1])) parts.push('⏳ Loading next…');
-  if (PM.isReady(curIdx-1)) parts.push('⚡ Prev ready');
-  el.textContent = parts.join(' · ');
-  el.className = 'prefetch-status' + (parts.some(p=>p.startsWith('⚡'))?' ready':'');
+  if (PM.isReady(curIdx+1)) parts.push('ΓÜí Next ready');
+  else if (filteredItems[curIdx+1] && PM._cache.has(filteredItems[curIdx+1])) parts.push('ΓÅ│ Loading nextΓÇª');
+  if (PM.isReady(curIdx-1)) parts.push('ΓÜí Prev ready');
+  el.textContent = parts.join(' ┬╖ ');
+  el.className = 'prefetch-status' + (parts.some(p=>p.startsWith('ΓÜí'))?' ready':'');
 }
 
 function navigateTo(idx) { curIdx = idx; loadViewerContent(); updateViewerNav(); }
@@ -1392,9 +1359,9 @@ document.getElementById('btn-export').addEventListener('click', async () => {
   }
 });
 
-// ═══════════════════════════════════════════════════════════════════════
-// ══ CHANGE PASSWORD ══════════════════════════════════════════════════════
-// ═══════════════════════════════════════════════════════════════════════
+// ΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉ
+// ΓòÉΓòÉ CHANGE PASSWORD ΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉ
+// ΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉ
 let cpwFiles=[], cpwOutputDir=null, cpwSourceDir=null, cpwSaveMode='newcopy';
 
 document.getElementById('btn-cpw-pick-files').addEventListener('click', async () => {
@@ -1418,7 +1385,7 @@ function renderCpwList() {
   const el = document.getElementById('cpw-files-list'); el.innerHTML = '';
   cpwFiles.forEach(f => {
     const row = document.createElement('div'); row.className = 'file-item';
-    row.innerHTML = `<span class="file-icon">🖼️</span><span class="file-name">${f.name}</span>`;
+    row.innerHTML = `<span class="file-icon">≡ƒû╝∩╕Å</span><span class="file-name">${f.name}</span>`;
     el.appendChild(row);
   });
 }
@@ -1426,14 +1393,14 @@ document.getElementById('btn-cpw-output-folder').addEventListener('click', async
   try {
     cpwOutputDir = await window.showDirectoryPicker({mode:'readwrite'});
     const el = document.getElementById('cpw-output-status');
-    el.className='folder-status loaded'; el.textContent=`✔ "${cpwOutputDir.name}"`;
+    el.className='folder-status loaded'; el.textContent=`Γ£ö "${cpwOutputDir.name}"`;
   } catch(e) { if (e.name!=='AbortError') toast('Error: '+e.message,'error'); }
 });
 document.getElementById('btn-cpw-source-folder').addEventListener('click', async () => {
   try {
     cpwSourceDir = await window.showDirectoryPicker({mode:'readwrite'});
     const el = document.getElementById('cpw-source-status');
-    el.className='folder-status loaded'; el.textContent=`✔ "${cpwSourceDir.name}"`;
+    el.className='folder-status loaded'; el.textContent=`Γ£ö "${cpwSourceDir.name}"`;
   } catch(e) { if (e.name!=='AbortError') toast('Error: '+e.message,'error'); }
 });
 
@@ -1445,7 +1412,7 @@ document.getElementById('btn-cpw-process').addEventListener('click', async () =>
   if (!oldPw)                                   return toast('Enter current password.','error');
   if (!newPw)                                   return toast('Enter new password.','error');
   if (newPw !== newPw2)                         return toast('New passwords do not match.','error');
-  if (newPw.length < 8)                         return toast('New password must be ≥ 8 characters.','error');
+  if (newPw.length < 8)                         return toast('New password must be ΓëÑ 8 characters.','error');
   if (cpwSaveMode==='newcopy' && !cpwOutputDir) return toast('Select an output folder.','error');
   if (cpwSaveMode==='overwrite' && !cpwSourceDir) return toast('Select the vault folder (with write access).','error');
 
@@ -1456,13 +1423,13 @@ document.getElementById('btn-cpw-process').addEventListener('click', async () =>
 
   for (let i=0; i<cpwFiles.length; i++) {
     const entry = cpwFiles[i];
-    prog.start(`[${i+1}/${cpwFiles.length}] ${entry.name}…`);
+    prog.start(`[${i+1}/${cpwFiles.length}] ${entry.name}ΓÇª`);
     try {
       const imageFile = await entry.handle.getFile();
       const saveDir   = cpwSaveMode==='overwrite' ? cpwSourceDir : cpwOutputDir;
       const outFH     = await saveDir.getFileHandle(entry.name, {create:true});
       await vaultChangePassword(imageFile, oldPw, newPw, outFH, (done,tot) => prog.update(done, tot));
-      addCpwResult(true, `${entry.name} — password changed ✔`);
+      addCpwResult(true, `${entry.name} ΓÇö password changed Γ£ö`);
     } catch(err) { addCpwResult(false, `${entry.name}: ${err.message}`); }
   }
 
@@ -1474,14 +1441,14 @@ document.getElementById('btn-cpw-process').addEventListener('click', async () =>
 function addCpwResult(ok, msg) {
   const d = document.createElement('div');
   d.className = 'stitch-result-item ' + (ok?'ok':'err');
-  d.textContent = (ok?'✔ ':'✖ ') + msg;
+  d.textContent = (ok?'Γ£ö ':'Γ£û ') + msg;
   document.getElementById('cpw-results').appendChild(d);
 }
 
 
-// ═══════════════════════════════════════════════════════════════════════
+// ΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉ
 // SETTINGS PANEL
-// ═══════════════════════════════════════════════════════════════════════
+// ΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉ
 
 function openSettings() {
   document.getElementById('settings-overlay').classList.remove('hidden');
@@ -1514,7 +1481,7 @@ function setActiveChip(groupId, val) {
 
 function updateWorkerBadge() {
   const b = document.getElementById('worker-badge');
-  if (b) b.textContent = `${CONFIG.workerCount} workers · ${CONFIG.chunkSizeMB} MB chunks · skip ${CONFIG.skipSeconds}s`;
+  if (b) b.textContent = `${CONFIG.workerCount} workers ┬╖ ${CONFIG.chunkSizeMB} MB chunks ┬╖ skip ${CONFIG.skipSeconds}s`;
 }
 
 // Wire chip groups
@@ -1547,26 +1514,9 @@ if (togAutoplay) {
   });
 }
 
-function openMenu() {
-  document.getElementById('menu-overlay').classList.remove('hidden');
-  document.getElementById('menu-panel').classList.add('open');
-}
-function closeMenu() {
-  document.getElementById('menu-overlay').classList.add('hidden');
-  document.getElementById('menu-panel').classList.remove('open');
-}
-document.getElementById('btn-open-menu').addEventListener('click', openMenu);
-document.getElementById('btn-close-menu').addEventListener('click', closeMenu);
-document.getElementById('menu-overlay').addEventListener('click', closeMenu);
-
-document.getElementById('btn-open-settings').addEventListener('click', () => { closeMenu(); openSettings(); });
+document.getElementById('btn-open-settings').addEventListener('click', openSettings);
 document.getElementById('btn-close-settings').addEventListener('click', closeSettings);
 document.getElementById('settings-overlay').addEventListener('click', closeSettings);
-
-const btnShortcuts = document.getElementById('btn-shortcuts');
-if (btnShortcuts) {
-  btnShortcuts.addEventListener('click', closeMenu);
-}
 document.getElementById('btn-reset-settings').addEventListener('click', () => {
   CONFIG = { ...CONFIG_DEFAULTS };
   saveConfig(CONFIG);
@@ -1575,9 +1525,9 @@ document.getElementById('btn-reset-settings').addEventListener('click', () => {
 });
 
 
-// ═══════════════════════════════════════════════════════════════════════
+// ΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉ
 // VIDEO SKIP CONTROLS + AUTO-NEXT
-// ═══════════════════════════════════════════════════════════════════════
+// ΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉ
 let autoNextTimer = null;
 
 function updateSkipLabels() {
@@ -1620,7 +1570,7 @@ function showVolumeHUD(vol) {
   bar.classList.remove('hidden');
   fill.style.width = (vol * 100) + '%';
   pct.textContent  = Math.round(vol * 100) + '%';
-  icon.textContent = vol === 0 ? '🔇' : vol < 0.5 ? '🔉' : '🔊';
+  icon.textContent = vol === 0 ? '≡ƒöç' : vol < 0.5 ? '≡ƒöë' : '≡ƒöè';
   clearTimeout(volHideTimer);
   volHideTimer = setTimeout(() => bar.classList.add('hidden'), 1500);
 }
@@ -1671,13 +1621,10 @@ function attachVideoHandlers(videoEl) {
   });
 }
 
-// ═══════════════════════════════════════════════════════════════════════
-// KEYBOARD SHORTCUTS — context-aware
-// ═══════════════════════════════════════════════════════════════════════
+// ΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉ
+// KEYBOARD SHORTCUTS ΓÇö context-aware
+// ΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉ
 document.addEventListener('keydown', e => {
-  if (e.key === 'Escape' && !document.getElementById('kbd-modal')?.classList.contains('hidden')) {
-    closeKbdModal(); return;
-  }
   // Settings panel: Escape closes it
   if (!document.getElementById('settings-panel').classList.contains('open')) {
     if (e.key === 'Escape' && !document.getElementById('viewer-modal').classList.contains('hidden')) {
@@ -1693,27 +1640,25 @@ document.addEventListener('keydown', e => {
   const isMedia = activeMedia && (activeMedia.tagName === 'VIDEO' || activeMedia.tagName === 'AUDIO');
 
   switch (e.key) {
-    // ── Navigation (always works regardless of media type) ──
+    // ΓöÇΓöÇ Navigation (always works regardless of media type) ΓöÇΓöÇ
     case 'n': case 'N':
       e.preventDefault(); cancelAutoNext(); if (curIdx < filteredItems.length-1) navigateTo(curIdx+1); break;
     case 'b': case 'B':
       e.preventDefault(); cancelAutoNext(); if (curIdx > 0) navigateTo(curIdx-1); break;
 
-    // ── Context-aware arrows ──
+    // ΓöÇΓöÇ Context-aware arrows ΓöÇΓöÇ
     case 'ArrowLeft':
-      e.preventDefault(); cancelAutoNext(); if (curIdx>0) navigateTo(curIdx-1);
+      e.preventDefault();
+      if (isMedia) skipMedia(-1);                                       // skip video back
+      else { cancelAutoNext(); if (curIdx>0) navigateTo(curIdx-1); }   // navigate
       break;
     case 'ArrowRight':
-      e.preventDefault(); cancelAutoNext(); if (curIdx<filteredItems.length-1) navigateTo(curIdx+1);
-      break;
-    case 'j': case 'J':
-      if (isMedia) { e.preventDefault(); skipMedia(-1); }
-      break;
-    case 'l': case 'L':
-      if (isMedia) { e.preventDefault(); skipMedia(+1); }
+      e.preventDefault();
+      if (isMedia) skipMedia(+1);                                              // skip video forward
+      else { cancelAutoNext(); if (curIdx<filteredItems.length-1) navigateTo(curIdx+1); } // navigate
       break;
 
-    // ── Volume (up/down arrows, only when media is active) ──
+    // ΓöÇΓöÇ Volume (up/down arrows, only when media is active) ΓöÇΓöÇ
     case 'ArrowUp':
       if (isMedia) { e.preventDefault(); activeMedia.volume = Math.min(1, activeMedia.volume + 0.1); showVolumeHUD(activeMedia.volume); }
       break;
@@ -1721,7 +1666,7 @@ document.addEventListener('keydown', e => {
       if (isMedia) { e.preventDefault(); activeMedia.volume = Math.max(0, activeMedia.volume - 0.1); showVolumeHUD(activeMedia.volume); }
       break;
 
-    // ── Playback ──
+    // ΓöÇΓöÇ Playback ΓöÇΓöÇ
     case ' ': {
       if (isMedia) { e.preventDefault(); activeMedia.paused ? activeMedia.play() : activeMedia.pause(); }
       break;
@@ -1743,35 +1688,17 @@ document.addEventListener('keydown', e => {
           : activeMedia.requestPictureInPicture().catch(() => toast('PiP not available.', 'error'));
       break;
     }
-    case 'e': case 'E': {
-      e.preventDefault();
-      document.getElementById('btn-export')?.click();
-      break;
-    }
-    case 'c': case 'C': {
-      if (filteredItems[curIdx]) {
-        navigator.clipboard.writeText(filteredItems[curIdx].name)
-          .then(() => toast('?? Filename copied!', 'success'))
-          .catch(() => {});
-      }
-      break;
-    }
-    case '?': {
-      e.preventDefault();
-      openKbdModal();
-      break;
-    }
   }
 });
 
-// ── Fullscreen navigation fix ──
+// ΓöÇΓöÇ Fullscreen navigation fix ΓöÇΓöÇ
 document.addEventListener('fullscreenchange', () => {
   window._svFullscreen = !!document.fullscreenElement;
 });
 
-// ═══════════════════════════════════════════════════════════════════════
+// ΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉ
 // GALLERY TYPE FILTER
-// ═══════════════════════════════════════════════════════════════════════
+// ΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉ
 let activeTypeFilter = 'all';
 
 function matchesTypeFilter(item, filterType) {
@@ -1802,6 +1729,7 @@ document.getElementById('type-filter-chips')?.addEventListener('click', e => {
 });
 
 // Update search handler to use combined filter
+document.getElementById('search-box').removeEventListener('input', null); // detach old handler
 document.getElementById('search-box').addEventListener('input', applyFilters);
 
 // Reset filter on vault lock
@@ -1810,18 +1738,18 @@ document.getElementById('btn-lock-vault').addEventListener('click', () => {
   document.querySelectorAll('.type-chip').forEach((c, i) => c.classList.toggle('active', i === 0));
 }, { capture: true }); // fires before the main lock handler
 
-// ═══════════════════════════════════════════════════════════════════════
+// ΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉ
 // MOBILE SWIPE GESTURES
-// ═══════════════════════════════════════════════════════════════════════
+// ΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉ
 (function initSwipe() {
   const container = document.getElementById('viewer-modal');
   if (!container) return;
 
   let touchStartX = 0, touchStartY = 0, touchStartTime = 0;
-  let lastTapTime = 0, lastTapX = 0;
-  const SWIPE_THRESHOLD  = 60;
-  const SWIPE_MAX_TIME   = 500;
-  const SWIPE_RATIO      = 1.5;
+  const SWIPE_THRESHOLD  = 60;   // px to count as a swipe
+  const SWIPE_MAX_TIME   = 500;  // ms ΓÇö faster than this counts as a swipe
+  const SWIPE_DOWN_MIN   = 80;   // px down to close viewer
+  const SWIPE_RATIO      = 1.5;  // horizontal must dominate for left/right swipe
 
   container.addEventListener('touchstart', e => {
     if (e.touches.length !== 1) return;
@@ -1832,62 +1760,38 @@ document.getElementById('btn-lock-vault').addEventListener('click', () => {
 
   container.addEventListener('touchend', e => {
     if (e.changedTouches.length !== 1) return;
-    const endX = e.changedTouches[0].clientX;
-    const endY = e.changedTouches[0].clientY;
-    const dx   = endX - touchStartX;
-    const dy   = endY - touchStartY;
+    const dx   = e.changedTouches[0].clientX - touchStartX;
+    const dy   = e.changedTouches[0].clientY - touchStartY;
     const dt   = Date.now() - touchStartTime;
     const absDx = Math.abs(dx), absDy = Math.abs(dy);
 
-    const isMedia = activeMedia && (activeMedia.tagName === 'VIDEO' || activeMedia.tagName === 'AUDIO');
-    
-    // Double tap for 10s skip (YouTube style)
-    if (isMedia && dt < 250 && absDx < 20 && absDy < 20) {
-      const now = Date.now();
-      if (now - lastTapTime < 300 && Math.abs(endX - lastTapX) < 40) {
-        const halfWidth = window.innerWidth / 2;
-        if (endX > halfWidth) skipMedia(+1);
-        else skipMedia(-1);
-        lastTapTime = 0;
-        return;
-      }
-      lastTapTime = now;
-      lastTapX = endX;
+    if (dt > SWIPE_MAX_TIME) return; // too slow
+
+    // Swipe down ΓåÆ close viewer
+    if (dy > SWIPE_DOWN_MIN && absDy > absDx) {
+      closeViewer(); return;
     }
 
-    if (dt > SWIPE_MAX_TIME) return;
-
-    // Vertical swipe -> Next/Prev item (Reels style)
-    if (absDy > SWIPE_THRESHOLD && absDy > absDx * SWIPE_RATIO) {
-      cancelAutoNext();
-      if (dy < 0) {
-        // Swipe UP -> Next
-        if (curIdx < filteredItems.length - 1) navigateTo(curIdx + 1);
-      } else {
-        // Swipe DOWN -> Prev
-        if (curIdx > 0) navigateTo(curIdx - 1);
-      }
-      return;
-    }
-
-    // Keep horizontal swipe just in case (disabled on video scrubber)
+    // Horizontal swipe ΓÇö only when NOT on a video (scrolling inside controls)
     const isOnVideo = e.target.closest('video') !== null;
     if (isOnVideo) return;
 
     if (absDx > SWIPE_THRESHOLD && absDx > absDy * SWIPE_RATIO) {
       cancelAutoNext();
       if (dx < 0) {
+        // Swipe left ΓåÆ next
         if (curIdx < filteredItems.length - 1) navigateTo(curIdx + 1);
       } else {
+        // Swipe right ΓåÆ prev
         if (curIdx > 0) navigateTo(curIdx - 1);
       }
     }
   }, { passive: true });
 })();
 
-// ═══════════════════════════════════════════════════════════════════════
+// ΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉ
 // ENTER KEY SHORTCUTS
-// ═══════════════════════════════════════════════════════════════════════
+// ΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉ
 // Enter on password field triggers unlock
 document.getElementById('open-pw')?.addEventListener('keydown', e => {
   if (e.key === 'Enter') document.getElementById('btn-unlock')?.click();
@@ -1897,9 +1801,9 @@ document.getElementById('hide-pw-confirm')?.addEventListener('keydown', e => {
   if (e.key === 'Enter') document.getElementById('btn-stitch')?.click();
 });
 
-// ═══════════════════════════════════════════════════════════════════════
-// DRAG & DROP — global, context-aware
-// ═══════════════════════════════════════════════════════════════════════
+// ΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉ
+// DRAG & DROP ΓÇö global, context-aware
+// ΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉ
 (function initDragDrop() {
   const overlay  = document.getElementById('drag-overlay');
   const dTitle   = document.getElementById('drag-title');
@@ -1954,31 +1858,31 @@ document.getElementById('hide-pw-confirm')?.addEventListener('keydown', e => {
 
     const tab = getActiveTab();
     if (tab === 'open') {
-      // Open Vault tab — treat dropped files as vault images
+      // Open Vault tab ΓÇö treat dropped files as vault images
       const vaultFiles = files.filter(f => /\.(jpg|jpeg|png)$/i.test(f.name));
       if (!vaultFiles.length) { toast('Drop a JPEG or PNG vault image.', 'error'); return; }
       vaultEntries = vaultFiles.map(f => ({ name: f.name, file: f }));
       const vls = document.getElementById('vault-load-status');
       vls.className = 'folder-status loaded';
       vls.textContent = vaultFiles.length === 1
-        ? `✔ ${vaultFiles[0].name}  (${fmtBytes(vaultFiles[0].size)})`
-        : `✔ ${vaultFiles.length} vault images dropped`;
+        ? `Γ£ö ${vaultFiles[0].name}  (${fmtBytes(vaultFiles[0].size)})`
+        : `Γ£ö ${vaultFiles.length} vault images dropped`;
       toast(`${vaultFiles.length} vault image(s) ready. Enter password and unlock.`, 'success');
     } else {
-      // Hide Files tab — add dropped files to secret list
+      // Hide Files tab ΓÇö add dropped files to secret list
       const before = secretFiles.length;
       addSecretFiles(files);
       const added = secretFiles.length - before;
-      toast(added > 0 ? `➕ Added ${added} file(s). Total: ${secretFiles.length}` : 'Files already in list.', added > 0 ? 'success' : 'error');
+      toast(added > 0 ? `Γ₧ò Added ${added} file(s). Total: ${secretFiles.length}` : 'Files already in list.', added > 0 ? 'success' : 'error');
     }
   });
 
   overlay.addEventListener('click', () => { dragDepth = 0; overlay.classList.add('hidden'); });
 })();
 
-// ═══════════════════════════════════════════════════════════════════════
+// ΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉ
 // PASSWORD STRENGTH METER
-// ═══════════════════════════════════════════════════════════════════════
+// ΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉ
 function calcStrength(pw) {
   if (!pw) return { level: 0, label: 'Enter a passphrase', checks: {} };
   const checks = {
@@ -1997,11 +1901,11 @@ function calcStrength(pw) {
   const entropy = pw.length * Math.log2(pool || 1);
 
   let level, label;
-  if (entropy < 28)      { level = 1; label = '🔴 Very Weak'; }
-  else if (entropy < 45) { level = 2; label = '🟠 Weak'; }
-  else if (entropy < 60) { level = 3; label = '🟡 Fair'; }
-  else if (entropy < 80) { level = 4; label = '🟢 Strong'; }
-  else                   { level = 5; label = '✅ Very Strong'; }
+  if (entropy < 28)      { level = 1; label = '≡ƒö┤ Very Weak'; }
+  else if (entropy < 45) { level = 2; label = '≡ƒƒá Weak'; }
+  else if (entropy < 60) { level = 3; label = '≡ƒƒí Fair'; }
+  else if (entropy < 80) { level = 4; label = '≡ƒƒó Strong'; }
+  else                   { level = 5; label = 'Γ£à Very Strong'; }
   return { level, label, checks };
 }
 
@@ -2019,9 +1923,9 @@ document.getElementById('hide-pw')?.addEventListener('input', function() {
   });
 });
 
-// ═══════════════════════════════════════════════════════════════════════
+// ΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉ
 // KEYBOARD SHORTCUTS MODAL (press ? to open)
-// ═══════════════════════════════════════════════════════════════════════
+// ΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉ
 function openKbdModal()  { document.getElementById('kbd-modal')?.classList.remove('hidden'); }
 function closeKbdModal() { document.getElementById('kbd-modal')?.classList.add('hidden'); }
 
@@ -2031,130 +1935,23 @@ document.getElementById('kbd-modal')?.addEventListener('click', e => {
   if (e.target === document.getElementById('kbd-modal')) closeKbdModal();
 });
 
-// ═══════════════════════════════════════════════════════════════════════
+// Wire ? key into existing keyboard handler ΓÇö extend the switch case
+// (handled in the main keyboard handler below via a patch)
+document.addEventListener('keydown', e => {
+  if (e.key === '?' && !e.ctrlKey && !e.altKey) {
+    const active = document.activeElement;
+    if (active && (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA')) return;
+    e.preventDefault();
+    openKbdModal();
+  }
+  if (e.key === 'Escape') closeKbdModal();
+}, { capture: false });
+
+// ΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉ
 // INITIALISE ON DOM READY
-// ═══════════════════════════════════════════════════════════════════════
+// ΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉ
 document.addEventListener('DOMContentLoaded', () => {
   CONFIG = loadConfig();
   syncSettingsUI();
   updateSkipLabels();
-  initAnnouncement();
 });
-
-// ═══════════════════════════════════════════════════════════════════════
-// ANNOUNCEMENT POPUP SYSTEM
-// ═══════════════════════════════════════════════════════════════════════
-const ANNO_JSON_URL = 'announcement.json';
-
-async function initAnnouncement() {
-  let ann;
-  try {
-    const res = await fetch(ANNO_JSON_URL + '?t=' + Date.now()); // bypass cache
-    if (!res.ok) return;
-    ann = await res.json();
-  } catch { return; } // silently fail if JSON missing
-
-  if (!ann || !ann.active) return;
-
-  const id = ann.id || 'ann-default';
-  const mode = ann.dismissMode || 'every-visit';
-
-  // Check dismiss state
-  if (mode === 'permanent') {
-    if (localStorage.getItem('anno_seen_' + id) === '1') return;
-  } else if (mode === 'session') {
-    if (sessionStorage.getItem('anno_seen_' + id) === '1') return;
-  }
-  // 'every-visit' → always show
-
-  showAnnoPopup(ann, false);
-}
-
-function buildAnnoBody(ann) {
-  const body = document.getElementById('anno-body');
-  body.innerHTML = '';
-
-  if (ann.imageUrl) {
-    const img = document.createElement('img');
-    img.src = ann.imageUrl; img.alt = ann.title || '';
-    body.appendChild(img);
-  }
-
-  // YouTube embed
-  if (ann.videoUrl && (ann.videoUrl.includes('youtube.com') || ann.videoUrl.includes('youtu.be'))) {
-    const videoId = ann.videoUrl.match(/(?:v=|youtu\.be\/)([^&?/]+)/)?.[1];
-    if (videoId) {
-      const iframe = document.createElement('iframe');
-      iframe.src = `https://www.youtube.com/embed/${videoId}?autoplay=0`;
-      iframe.allow = 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture';
-      iframe.allowFullscreen = true;
-      body.appendChild(iframe);
-    }
-  } else if (ann.videoUrl) {
-    // Direct video URL (.mp4 etc)
-    const vid = document.createElement('video');
-    vid.src = ann.videoUrl; vid.controls = true;
-    body.appendChild(vid);
-  }
-
-  if (ann.text) {
-    const p = document.createElement('p');
-    p.textContent = ann.text;
-    body.appendChild(p);
-  }
-}
-
-function showAnnoPopup(ann, isPreview) {
-  const modal   = document.getElementById('anno-modal');
-  const overlay = document.getElementById('anno-overlay');
-  const inner   = document.getElementById('anno-inner');
-  const title   = document.getElementById('anno-title');
-  const footer  = document.getElementById('anno-footer');
-  const btn     = document.getElementById('anno-btn');
-
-  inner.dataset.size = ann.size || 'medium';
-  title.innerHTML = '';
-
-  if (isPreview) {
-    const badge = document.createElement('div');
-    badge.className = 'anno-preview-badge'; badge.textContent = '● PREVIEW';
-    title.appendChild(badge);
-    title.appendChild(document.createElement('br'));
-  }
-  title.appendChild(document.createTextNode(ann.title || ''));
-
-  buildAnnoBody(ann);
-
-  if (ann.buttonText) {
-    btn.textContent = ann.buttonText;
-    btn.href = ann.buttonLink || '#';
-    btn.onclick = (e) => {
-      if (!ann.buttonLink) e.preventDefault();
-      dismiss();
-    };
-    footer.classList.remove('hidden');
-  } else {
-    footer.classList.add('hidden');
-  }
-
-  overlay.classList.remove('hidden');
-  modal.classList.remove('hidden');
-
-  function dismiss() {
-    overlay.classList.add('hidden');
-    modal.classList.add('hidden');
-    if (!isPreview) {
-      const mode = ann.dismissMode || 'every-visit';
-      const id   = ann.id || 'ann-default';
-      if (mode === 'permanent') localStorage.setItem('anno_seen_' + id, '1');
-      else if (mode === 'session') sessionStorage.setItem('anno_seen_' + id, '1');
-      // 'every-visit' → store nothing, shows again on reload
-    }
-  }
-
-  document.getElementById('anno-close').onclick = dismiss;
-  overlay.onclick = dismiss;
-}
-
-// Expose for admin preview
-window._annoPreview = function(ann) { showAnnoPopup(ann, true); };
